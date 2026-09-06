@@ -3,7 +3,7 @@ import { connectDatabase } from "./config/database";
 import { env } from "./config/env";
 
 async function start(): Promise<void> {
-  await connectDatabase(env.mongoUri);
+  await connectDatabase(env.mongoUri, env.mongoDnsServers);
   app.listen(env.port, () => console.log(`MineOS backend listening on port ${env.port}`));
 }
 
