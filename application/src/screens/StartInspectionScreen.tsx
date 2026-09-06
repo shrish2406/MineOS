@@ -19,13 +19,13 @@ import { getSelectedMine, getUser } from '../services/storage';
 import colors from '../theme/colors';
 import type {
   ComplianceStatus,
+  InspectionStackParamList,
   InspectionType,
   Mine,
-  RootStackParamList,
   User,
 } from '../types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'StartInspection'>;
+type Props = NativeStackScreenProps<InspectionStackParamList, 'StartInspection'>;
 
 type PermissionStatus = 'Checking...' | 'Granted' | 'Denied';
 
@@ -100,7 +100,7 @@ export default function StartInspectionScreen({ navigation }: Props) {
       [
         {
           text: 'OK',
-          onPress: () => navigation.navigate('Home'),
+          onPress: () => navigation.getParent()?.navigate('Home'),
         },
       ],
     );

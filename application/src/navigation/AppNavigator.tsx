@@ -1,18 +1,117 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AddMineScreen from '../screens/AddMineScreen';
 import SelectMineScreen from '../screens/SelectMineScreen';
 import StartInspectionScreen from '../screens/StartInspectionScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import { hasValidSession } from '../services/storage';
 import colors from '../theme/colors';
-import type { RootStackParamList } from '../types';
+import type {
+  HomeStackParamList,
+  InspectionStackParamList,
+  MainTabParamList,
+  RootStackParamList,
+} from '../types';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
+const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const InspectionStack = createNativeStackNavigator<InspectionStackParamList>();
+
+const stackScreenOptions = {
+  headerStyle: { backgroundColor: colors.navy },
+  headerTintColor: colors.white,
+  headerTitleStyle: { fontWeight: '600' as const },
+  contentStyle: { backgroundColor: colors.background },
+};
+
+function HomeStackNavigator() {
+  return (
+    <HomeStack.Navigator screenOptions={stackScreenOptions}>
+      <HomeStack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ title: 'MineOS' }}
+      />
+      <HomeStack.Screen
+        name="AddMine"
+        component={AddMineScreen}
+        options={{ title: 'Add Mine' }}
+      />
+    </HomeStack.Navigator>
+  );
+}
+
+function InspectionStackNavigator() {
+  return (
+    <InspectionStack.Navigator screenOptions={stackScreenOptions}>
+      <InspectionStack.Screen
+        name="SelectMine"
+        component={SelectMineScreen}
+        options={{ title: 'Select Mine' }}
+      />
+      <InspectionStack.Screen
+        name="StartInspection"
+        component={StartInspectionScreen}
+        options={{ title: 'Start Inspection' }}
+      />
+    </InspectionStack.Navigator>
+  );
+}
+
+function MainTabNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.gold,
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.6)',
+        tabBarStyle: {
+          backgroundColor: colors.navy,
+          borderTopColor: colors.navy,
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeStackNavigator}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Inspections"
+        component={InspectionStackNavigator}
+        options={{
+          tabBarLabel: 'Inspections',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="clipboard" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
 
 export default function AppNavigator() {
   const [isLoading, setIsLoading] = useState(true);
@@ -35,46 +134,26 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName={isAuthenticated ? 'Home' : 'Login'}
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.navy },
-          headerTintColor: colors.white,
-          headerTitleStyle: { fontWeight: '600' },
-          contentStyle: { backgroundColor: colors.background },
-        }}
+      <RootStack.Navigator
+        initialRouteName={isAuthenticated ? 'MainTabs' : 'Login'}
+        screenOptions={stackScreenOptions}
       >
-        <Stack.Screen
+        <RootStack.Screen
           name="Login"
           component={LoginScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen
+        <RootStack.Screen
           name="Register"
           component={RegisterScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: 'MineOS' }}
+        <RootStack.Screen
+          name="MainTabs"
+          component={MainTabNavigator}
+          options={{ headerShown: false }}
         />
-        <Stack.Screen
-          name="AddMine"
-          component={AddMineScreen}
-          options={{ title: 'Add Mine' }}
-        />
-        <Stack.Screen
-          name="SelectMine"
-          component={SelectMineScreen}
-          options={{ title: 'Select Mine' }}
-        />
-        <Stack.Screen
-          name="StartInspection"
-          component={StartInspectionScreen}
-          options={{ title: 'Start Inspection' }}
-        />
-      </Stack.Navigator>
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }

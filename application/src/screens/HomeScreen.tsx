@@ -1,27 +1,29 @@
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import axios from 'axios';
 import CustomButton from '../components/CustomButton';
 import MineCard from '../components/MineCard';
-import { logout } from '../services/authService';
-import { deleteMine, fetchMines } from '../services/mineService';
 import { getUser } from '../services/storage';
 import colors from '../theme/colors';
-import type { Mine, RootStackParamList, User } from '../types';
+import type { HomeStackParamList, Mine, User } from '../types';
 import { canDeleteMines, canManageMines } from '../types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
+
+const MINES_KEY = 'MINES_KEY';
 
 const TODAY_TASKS = [
   { id: '1', title: 'Ventilation check — Section B', due: '10:00 AM' },
@@ -33,6 +35,36 @@ const OPEN_VIOLATIONS = [
   { id: '1', title: 'PPE non-compliance', severity: 'High', mine: 'North Ridge' },
   { id: '2', title: 'Blocked emergency exit', severity: 'Critical', mine: 'East Valley' },
   { id: '3', title: 'Overdue equipment inspection', severity: 'Medium', mine: 'South Pit' },
+];
+
+const mockMines: Mine[] = [
+  {
+    _id: '1',
+    name: 'North Ridge Coal Mine',
+    code: 'NR-001',
+    location: 'Jharkhand, India',
+    operator: 'Coal India Ltd.',
+    status: 'active',
+    createdBy: 'local',
+  },
+  {
+    _id: '2',
+    name: 'East Valley Mine',
+    code: 'EV-002',
+    location: 'Odisha, India',
+    operator: 'Eastern Coalfields',
+    status: 'active',
+    createdBy: 'local',
+  },
+  {
+    _id: '3',
+    name: 'South Pit Mine',
+    code: 'SP-003',
+    location: 'Chhattisgarh, India',
+    operator: 'SECL',
+    status: 'inactive',
+    createdBy: 'local',
+  },
 ];
 
 function severityColor(severity: string): string {
@@ -55,93 +87,87 @@ function formatRole(role: string): string {
     .join(' ');
 }
 
-export default function HomeScreen({ navigation }: Props) {
+export default function HomeScreen({ navigation: _navigation }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [mines, setMines] = useState<Mine[]>([]);
-  const [minesLoading, setMinesLoading] = useState(true);
-  const [minesError, setMinesError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [mineName, setMineName] = useState('');
+  const [mineCode, setMineCode] = useState('');
+  const [location, setLocation] = useState('');
+  const [operator, setOperator] = useState('');
 
-  const loadMines = useCallback(async () => {
-    setMinesError('');
-    try {
-      const data = await fetchMines();
-      setMines(data);
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setMinesError(err.response?.data?.message ?? 'Failed to load mines.');
-      } else {
-        setMinesError('An unexpected error occurred.');
+  useEffect(() => {
+    const loadMines = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(MINES_KEY);
+        if (stored) {
+          setMines(JSON.parse(stored) as Mine[]);
+        } else {
+          setMines(mockMines);
+          await AsyncStorage.setItem(MINES_KEY, JSON.stringify(mockMines));
+        }
+      } catch {
+        setMines(mockMines);
       }
-    } finally {
-      setMinesLoading(false);
-      setRefreshing(false);
-    }
+    };
+
+    loadMines();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       getUser().then(setUser);
-      setMinesLoading(true);
-      loadMines();
-    }, [loadMines]),
+    }, []),
   );
 
-  const handleLogout = useCallback(() => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-          });
-        },
-      },
-    ]);
-  }, [navigation]);
+  const persistMines = async (updatedMines: Mine[]) => {
+    await AsyncStorage.setItem(MINES_KEY, JSON.stringify(updatedMines));
+  };
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </Pressable>
-      ),
+  const handleDelete = (id: string) => {
+    setMines((prev) => {
+      const updatedMines = prev.filter((mine) => mine._id !== id);
+      persistMines(updatedMines);
+      return updatedMines;
     });
-  }, [navigation, handleLogout]);
+  };
 
-  const handleDeleteMine = (mine: Mine) => {
-    Alert.alert(
-      'Delete Mine',
-      `Are you sure you want to delete "${mine.name}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteMine(mine._id);
-              setMines((prev) => prev.filter((m) => m._id !== mine._id));
-            } catch (err) {
-              const message = axios.isAxiosError(err)
-                ? err.response?.data?.message ?? 'Failed to delete mine.'
-                : 'An unexpected error occurred.';
-              Alert.alert('Error', message);
-            }
-          },
-        },
-      ],
-    );
+  const resetModal = () => {
+    setMineName('');
+    setMineCode('');
+    setLocation('');
+    setOperator('');
+    setModalVisible(false);
+  };
+
+  const handleSaveMine = () => {
+    const newMine: Mine = {
+      _id: Date.now().toString(),
+      name: mineName.trim(),
+      code: mineCode.trim(),
+      location: location.trim(),
+      operator: operator.trim(),
+      status: 'active',
+      createdBy: 'local',
+    };
+    setMines((prev) => {
+      const updatedMines = [...prev, newMine];
+      persistMines(updatedMines);
+      return updatedMines;
+    });
+    setMineName('');
+    setMineCode('');
+    setLocation('');
+    setOperator('');
+    setModalVisible(false);
   };
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadMines();
+    setMines(mockMines);
+    persistMines(mockMines);
+    setRefreshing(false);
   };
 
   const greeting = user?.name ? `Welcome, ${user.name}` : 'Welcome';
@@ -170,31 +196,19 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Registered Mines</Text>
           {canAdd ? (
-            <Pressable onPress={() => navigation.navigate('AddMine')}>
+            <Pressable onPress={() => setModalVisible(true)}>
               <Text style={styles.addLink}>+ Add Mine</Text>
             </Pressable>
           ) : null}
         </View>
 
-        {minesLoading ? (
-          <View style={styles.minesLoading}>
-            <ActivityIndicator size="small" color={colors.gold} />
-            <Text style={styles.loadingText}>Loading mines...</Text>
-          </View>
-        ) : minesError ? (
-          <View style={styles.errorCard}>
-            <Text style={styles.errorText}>{minesError}</Text>
-            <Pressable onPress={loadMines}>
-              <Text style={styles.retryText}>Tap to retry</Text>
-            </Pressable>
-          </View>
-        ) : mines.length === 0 ? (
+        {mines.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>No mines registered yet.</Text>
             {canAdd ? (
               <CustomButton
                 title="Add Your First Mine"
-                onPress={() => navigation.navigate('AddMine')}
+                onPress={() => setModalVisible(true)}
                 style={styles.emptyButton}
               />
             ) : null}
@@ -206,12 +220,13 @@ export default function HomeScreen({ navigation }: Props) {
                 <MineCard mine={mine} />
               </View>
               {canDelete ? (
-                <Pressable
+                <TouchableOpacity
                   style={styles.deleteButton}
-                  onPress={() => handleDeleteMine(mine)}
+                  onPress={() => handleDelete(mine._id)}
+                  accessibilityLabel={`Delete ${mine.name}`}
                 >
-                  <Text style={styles.deleteText}>Delete</Text>
-                </Pressable>
+                  <Ionicons name="trash-outline" size={22} color={colors.error} />
+                </TouchableOpacity>
               ) : null}
             </View>
           ))
@@ -243,11 +258,62 @@ export default function HomeScreen({ navigation }: Props) {
         ))}
       </View>
 
-      <CustomButton
-        title="Select Mine for Inspection"
-        onPress={() => navigation.navigate('SelectMine')}
-        style={styles.selectButton}
-      />
+      <Modal visible={isModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Register New Mine</Text>
+
+            <Text style={styles.inputLabel}>Mine Name</Text>
+            <TextInput
+              style={styles.textInput}
+              value={mineName}
+              onChangeText={setMineName}
+              placeholder="e.g., North Ridge Coal Mine"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="words"
+            />
+
+            <Text style={styles.inputLabel}>Mine Code</Text>
+            <TextInput
+              style={styles.textInput}
+              value={mineCode}
+              onChangeText={setMineCode}
+              placeholder="e.g., NRM-882"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="characters"
+            />
+
+            <Text style={styles.inputLabel}>Location</Text>
+            <TextInput
+              style={styles.textInput}
+              value={location}
+              onChangeText={setLocation}
+              placeholder="e.g., Kentucky, USA"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="words"
+            />
+
+            <Text style={styles.inputLabel}>Operator</Text>
+            <TextInput
+              style={styles.textInput}
+              value={operator}
+              onChangeText={setOperator}
+              placeholder="e.g., Apex Mining Corp"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="words"
+            />
+
+            <View style={styles.modalActions}>
+              <Pressable style={styles.cancelButton} onPress={resetModal}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.saveButton} onPress={handleSaveMine}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -260,16 +326,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
-  },
-  logoutButton: {
-    marginRight: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  logoutText: {
-    color: colors.gold,
-    fontSize: 15,
-    fontWeight: '600',
   },
   greetingCard: {
     backgroundColor: colors.navy,
@@ -321,33 +377,6 @@ const styles = StyleSheet.create({
     color: colors.gold,
     marginBottom: 12,
   },
-  minesLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 10,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  errorCard: {
-    backgroundColor: '#FFE3E3',
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  retryText: {
-    color: colors.gold,
-    fontSize: 14,
-    fontWeight: '600',
-  },
   emptyCard: {
     backgroundColor: colors.white,
     borderRadius: 10,
@@ -365,21 +394,17 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   mineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 4,
   },
   mineCardWrapper: {
-    opacity: 1,
+    flex: 1,
   },
   deleteButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    marginBottom: 8,
-  },
-  deleteText: {
-    color: colors.error,
-    fontSize: 13,
-    fontWeight: '600',
+    padding: 8,
+    marginLeft: 4,
+    marginBottom: 12,
   },
   card: {
     backgroundColor: colors.white,
@@ -410,7 +435,72 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 8,
   },
-  selectButton: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 6,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: colors.text,
+    marginBottom: 16,
+    backgroundColor: colors.white,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
     marginTop: 8,
+  },
+  cancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  saveButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.navy,
+  },
+  saveButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.white,
   },
 });

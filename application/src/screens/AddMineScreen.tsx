@@ -13,9 +13,9 @@ import CustomButton from '../components/CustomButton';
 import CustomInput from '../components/CustomInput';
 import { createMine } from '../services/mineService';
 import colors from '../theme/colors';
-import type { RootStackParamList } from '../types';
+import type { HomeStackParamList } from '../types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'AddMine'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'AddMine'>;
 
 export default function AddMineScreen({ navigation }: Props) {
   const [name, setName] = useState('');

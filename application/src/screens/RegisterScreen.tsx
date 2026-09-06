@@ -46,7 +46,7 @@ export default function RegisterScreen({ navigation }: Props) {
       const goHome = () => {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'Home' }],
+          routes: [{ name: 'MainTabs' }],
         });
       };
 
@@ -86,7 +86,7 @@ export default function RegisterScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Text style={styles.brand}>MinsOS</Text>
+            <Text style={styles.brand}>MineOS</Text>
             <Text style={styles.subtitle}>
               AI-Based Smart Governance & Compliance Monitoring for Coal Mines
             </Text>

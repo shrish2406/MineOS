@@ -56,8 +56,21 @@ export interface InspectionFormData {
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
+  MainTabs: undefined;
+};
+
+export type MainTabParamList = {
+  Home: undefined;
+  Inspections: undefined;
+  Profile: undefined;
+};
+
+export type HomeStackParamList = {
   Home: undefined;
   AddMine: undefined;
+};
+
+export type InspectionStackParamList = {
   SelectMine: undefined;
   StartInspection: undefined;
 };

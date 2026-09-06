@@ -14,9 +14,9 @@ import MineCard from '../components/MineCard';
 import { fetchMines } from '../services/mineService';
 import { saveSelectedMine } from '../services/storage';
 import colors from '../theme/colors';
-import type { Mine, RootStackParamList } from '../types';
+import type { InspectionStackParamList, Mine } from '../types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'SelectMine'>;
+type Props = NativeStackScreenProps<InspectionStackParamList, 'SelectMine'>;
 
 export default function SelectMineScreen({ navigation }: Props) {
   const [mines, setMines] = useState<Mine[]>([]);

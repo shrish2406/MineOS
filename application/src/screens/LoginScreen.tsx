@@ -45,7 +45,7 @@ export default function LoginScreen({ navigation }: Props) {
       await login(trimmedEmail, password);
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Home' }],
+        routes: [{ name: 'MainTabs' }],
       });
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -69,7 +69,7 @@ export default function LoginScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Text style={styles.brand}>MinsOS</Text>
+            <Text style={styles.brand}>MineOS</Text>
             <Text style={styles.subtitle}>
               AI-Based Smart Governance & Compliance Monitoring for Coal Mines
             </Text>
