@@ -1,6 +1,7 @@
 const colors = {
-  navy: '#0D2B45',
-  gold: '#C27A0A',
+  navy: '#0B192C',
+  navyLight: '#1E293B',
+  gold: '#D4AF37',
   background: '#F8F8F6',
   white: '#FFFFFF',
   text: '#1F2933',

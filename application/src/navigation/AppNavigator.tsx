@@ -11,12 +11,14 @@ import AddMineScreen from '../screens/AddMineScreen';
 import SelectMineScreen from '../screens/SelectMineScreen';
 import StartInspectionScreen from '../screens/StartInspectionScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import HazardReportScreen from '../screens/HazardReportScreen';
 import { hasValidSession } from '../services/storage';
 import colors from '../theme/colors';
 import type {
   HomeStackParamList,
   InspectionStackParamList,
   MainTabParamList,
+  ProfileStackParamList,
   RootStackParamList,
 } from '../types';
 
@@ -24,6 +26,7 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const InspectionStack = createNativeStackNavigator<InspectionStackParamList>();
+const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 
 const stackScreenOptions = {
   headerStyle: { backgroundColor: colors.navy },
@@ -66,6 +69,23 @@ function InspectionStackNavigator() {
   );
 }
 
+function ProfileStackNavigator() {
+  return (
+    <ProfileStack.Navigator screenOptions={stackScreenOptions}>
+      <ProfileStack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <ProfileStack.Screen
+        name="HazardReport"
+        component={HazardReportScreen}
+        options={{ title: 'Report Hazard' }}
+      />
+    </ProfileStack.Navigator>
+  );
+}
+
 function MainTabNavigator() {
   return (
     <Tab.Navigator
@@ -101,7 +121,7 @@ function MainTabNavigator() {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStackNavigator}
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, size }) => (

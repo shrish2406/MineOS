@@ -10,20 +10,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import CustomButton from '../components/CustomButton';
 import MineCard from '../components/MineCard';
-import { getUser } from '../services/storage';
+import { loadMines, saveMines } from '../services/mineStorage';
+import { getUser, saveSelectedMine } from '../services/storage';
 import colors from '../theme/colors';
 import type { HomeStackParamList, Mine, User } from '../types';
 import { canDeleteMines, canManageMines } from '../types';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
-
-const MINES_KEY = 'MINES_KEY';
 
 const TODAY_TASKS = [
   { id: '1', title: 'Ventilation check — Section B', due: '10:00 AM' },
@@ -35,36 +32,6 @@ const OPEN_VIOLATIONS = [
   { id: '1', title: 'PPE non-compliance', severity: 'High', mine: 'North Ridge' },
   { id: '2', title: 'Blocked emergency exit', severity: 'Critical', mine: 'East Valley' },
   { id: '3', title: 'Overdue equipment inspection', severity: 'Medium', mine: 'South Pit' },
-];
-
-const mockMines: Mine[] = [
-  {
-    _id: '1',
-    name: 'North Ridge Coal Mine',
-    code: 'NR-001',
-    location: 'Jharkhand, India',
-    operator: 'Coal India Ltd.',
-    status: 'active',
-    createdBy: 'local',
-  },
-  {
-    _id: '2',
-    name: 'East Valley Mine',
-    code: 'EV-002',
-    location: 'Odisha, India',
-    operator: 'Eastern Coalfields',
-    status: 'active',
-    createdBy: 'local',
-  },
-  {
-    _id: '3',
-    name: 'South Pit Mine',
-    code: 'SP-003',
-    location: 'Chhattisgarh, India',
-    operator: 'SECL',
-    status: 'inactive',
-    createdBy: 'local',
-  },
 ];
 
 function severityColor(severity: string): string {
@@ -87,7 +54,7 @@ function formatRole(role: string): string {
     .join(' ');
 }
 
-export default function HomeScreen({ navigation: _navigation }: Props) {
+export default function HomeScreen({ navigation }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [mines, setMines] = useState<Mine[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,21 +65,7 @@ export default function HomeScreen({ navigation: _navigation }: Props) {
   const [operator, setOperator] = useState('');
 
   useEffect(() => {
-    const loadMines = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(MINES_KEY);
-        if (stored) {
-          setMines(JSON.parse(stored) as Mine[]);
-        } else {
-          setMines(mockMines);
-          await AsyncStorage.setItem(MINES_KEY, JSON.stringify(mockMines));
-        }
-      } catch {
-        setMines(mockMines);
-      }
-    };
-
-    loadMines();
+    loadMines().then(setMines);
   }, []);
 
   useFocusEffect(
@@ -121,16 +74,18 @@ export default function HomeScreen({ navigation: _navigation }: Props) {
     }, []),
   );
 
-  const persistMines = async (updatedMines: Mine[]) => {
-    await AsyncStorage.setItem(MINES_KEY, JSON.stringify(updatedMines));
+  const handleMinePress = async (mine: Mine) => {
+    if (mine.status !== 'active') {
+      return;
+    }
+    await saveSelectedMine(mine);
+    navigation.getParent()?.navigate('Inspections', { screen: 'StartInspection' });
   };
 
-  const handleDelete = (id: string) => {
-    setMines((prev) => {
-      const updatedMines = prev.filter((mine) => mine._id !== id);
-      persistMines(updatedMines);
-      return updatedMines;
-    });
+  const handleDelete = async (id: string) => {
+    const updatedMines = mines.filter((mine) => mine._id !== id);
+    setMines(updatedMines);
+    await saveMines(updatedMines);
   };
 
   const resetModal = () => {
@@ -141,7 +96,7 @@ export default function HomeScreen({ navigation: _navigation }: Props) {
     setModalVisible(false);
   };
 
-  const handleSaveMine = () => {
+  const handleSaveMine = async () => {
     const newMine: Mine = {
       _id: Date.now().toString(),
       name: mineName.trim(),
@@ -151,11 +106,9 @@ export default function HomeScreen({ navigation: _navigation }: Props) {
       status: 'active',
       createdBy: 'local',
     };
-    setMines((prev) => {
-      const updatedMines = [...prev, newMine];
-      persistMines(updatedMines);
-      return updatedMines;
-    });
+    const updatedMines = [newMine, ...mines];
+    setMines(updatedMines);
+    await saveMines(updatedMines);
     setMineName('');
     setMineCode('');
     setLocation('');
@@ -163,10 +116,10 @@ export default function HomeScreen({ navigation: _navigation }: Props) {
     setModalVisible(false);
   };
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setMines(mockMines);
-    persistMines(mockMines);
+    const refreshed = await loadMines();
+    setMines(refreshed);
     setRefreshing(false);
   };
 
@@ -203,21 +156,19 @@ export default function HomeScreen({ navigation: _navigation }: Props) {
         </View>
 
         {mines.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No mines registered yet.</Text>
-            {canAdd ? (
-              <CustomButton
-                title="Add Your First Mine"
-                onPress={() => setModalVisible(true)}
-                style={styles.emptyButton}
-              />
-            ) : null}
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>
+              No mines registered yet. Tap '+ Add Mine' to begin.
+            </Text>
           </View>
         ) : (
           mines.map((mine) => (
             <View key={mine._id} style={styles.mineRow}>
               <View style={styles.mineCardWrapper}>
-                <MineCard mine={mine} />
+                <MineCard
+                  mine={mine}
+                  onPress={mine.status === 'active' ? () => handleMinePress(mine) : undefined}
+                />
               </View>
               {canDelete ? (
                 <TouchableOpacity
@@ -377,21 +328,16 @@ const styles = StyleSheet.create({
     color: colors.gold,
     marginBottom: 12,
   },
-  emptyCard: {
-    backgroundColor: colors.white,
-    borderRadius: 10,
-    padding: 20,
+  emptyState: {
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
   },
   emptyText: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginBottom: 12,
-  },
-  emptyButton: {
-    alignSelf: 'stretch',
+    textAlign: 'center',
   },
   mineRow: {
     flexDirection: 'row',

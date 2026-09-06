@@ -11,14 +11,14 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Camera } from 'expo-camera';
-import * as Location from 'expo-location';
+import ChecklistItemCard from '../components/ChecklistItemCard';
 import CustomButton from '../components/CustomButton';
-import CustomInput from '../components/CustomInput';
+import { saveInspection } from '../services/inspectionStorage';
 import { getSelectedMine, getUser } from '../services/storage';
 import colors from '../theme/colors';
 import type {
-  ComplianceStatus,
+  ChecklistItemResult,
+  InspectionRecord,
   InspectionStackParamList,
   InspectionType,
   Mine,
@@ -27,9 +27,8 @@ import type {
 
 type Props = NativeStackScreenProps<InspectionStackParamList, 'StartInspection'>;
 
-type PermissionStatus = 'Checking...' | 'Granted' | 'Denied';
-
 const INSPECTION_TYPES: { value: InspectionType; label: string }[] = [
+  { value: 'routine_safety_audit', label: 'Routine Safety Audit' },
   { value: 'ventilation', label: 'Ventilation Check' },
   { value: 'ppe_compliance', label: 'PPE Compliance' },
   { value: 'dust_monitoring', label: 'Dust Monitoring' },
@@ -37,20 +36,32 @@ const INSPECTION_TYPES: { value: InspectionType; label: string }[] = [
   { value: 'emergency_exits', label: 'Emergency Exits' },
 ];
 
-const COMPLIANCE_OPTIONS: { value: ComplianceStatus; label: string }[] = [
-  { value: 'pass', label: 'Pass' },
-  { value: 'partial', label: 'Partial' },
-  { value: 'fail', label: 'Fail' },
+const DEFAULT_CHECKLIST: ChecklistItemResult[] = [
+  {
+    id: 'ppe_compliance',
+    label: 'PPE Compliance',
+    description: 'Hardhats, vests, boots',
+    status: 'pass',
+  },
+  {
+    id: 'emergency_exits',
+    label: 'Emergency Exit Routes',
+    description: 'Clear of debris',
+    status: 'pass',
+  },
+  {
+    id: 'fire_extinguisher',
+    label: 'Fire Extinguisher Readiness',
+    description: 'Charged and tagged',
+    status: 'pass',
+  },
 ];
 
 export default function StartInspectionScreen({ navigation }: Props) {
   const [mine, setMine] = useState<Mine | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [cameraStatus, setCameraStatus] = useState<PermissionStatus>('Checking...');
-  const [locationStatus, setLocationStatus] = useState<PermissionStatus>('Checking...');
-  const [inspectionType, setInspectionType] = useState<InspectionType>('ventilation');
-  const [complianceStatus, setComplianceStatus] = useState<ComplianceStatus>('pass');
-  const [observations, setObservations] = useState('');
+  const [inspectionType, setInspectionType] = useState<InspectionType>('routine_safety_audit');
+  const [checklistItems, setChecklistItems] = useState<ChecklistItemResult[]>(DEFAULT_CHECKLIST);
   const [submitting, setSubmitting] = useState(false);
 
   useFocusEffect(
@@ -60,50 +71,65 @@ export default function StartInspectionScreen({ navigation }: Props) {
     }, []),
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      const checkPermissions = async () => {
-        setCameraStatus('Checking...');
-        setLocationStatus('Checking...');
+  const handleChecklistChange = (index: number, updated: ChecklistItemResult) => {
+    setChecklistItems((prev) => prev.map((item, i) => (i === index ? updated : item)));
+  };
 
-        const cameraResult = await Camera.requestCameraPermissionsAsync();
-        setCameraStatus(cameraResult.granted ? 'Granted' : 'Denied');
-
-        const locationResult = await Location.requestForegroundPermissionsAsync();
-        setLocationStatus(locationResult.granted ? 'Granted' : 'Denied');
-      };
-
-      checkPermissions();
-    }, []),
-  );
+  const validateChecklist = (): string | null => {
+    for (const item of checklistItems) {
+      if (item.status === 'partial' || item.status === 'fail') {
+        if (!item.violation?.observationNotes?.trim()) {
+          return `Please add observation notes for "${item.label}".`;
+        }
+      }
+    }
+    return null;
+  };
 
   const handleSubmit = async () => {
-    if (!mine) {
+    if (!mine || !user) {
       return;
     }
 
-    if (!observations.trim()) {
-      Alert.alert('Validation', 'Please enter your inspection observations.');
+    const validationError = validateChecklist();
+    if (validationError) {
+      Alert.alert('Validation', validationError);
       return;
     }
 
     setSubmitting(true);
 
-    // Mock submission — inspection API will be wired in a future release.
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      const record: InspectionRecord = {
+        id: `insp_${Date.now()}`,
+        mineId: mine._id,
+        mineName: mine.name,
+        inspectorId: user.id,
+        inspectorName: user.name,
+        inspectionType,
+        checklistItems,
+        submittedAt: new Date().toISOString(),
+      };
 
-    setSubmitting(false);
+      await saveInspection(record);
 
-    Alert.alert(
-      'Inspection Submitted',
-      `${INSPECTION_TYPES.find((t) => t.value === inspectionType)?.label} for ${mine.name} recorded as ${complianceStatus.toUpperCase()}.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.getParent()?.navigate('Home'),
-        },
-      ],
-    );
+      Alert.alert(
+        'Inspection Submitted',
+        `${INSPECTION_TYPES.find((t) => t.value === inspectionType)?.label} for ${mine.name} has been saved locally.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              navigation.getParent()?.navigate('Home');
+            },
+          },
+        ],
+      );
+    } catch {
+      Alert.alert('Error', 'Failed to save inspection. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!mine) {
@@ -132,9 +158,7 @@ export default function StartInspectionScreen({ navigation }: Props) {
           <Text style={styles.mineDetail}>Code: {mine.code}</Text>
           <Text style={styles.mineDetail}>Location: {mine.location}</Text>
           <Text style={styles.mineDetail}>Operator: {mine.operator}</Text>
-          {user ? (
-            <Text style={styles.mineDetail}>Inspector: {user.name}</Text>
-          ) : null}
+          {user ? <Text style={styles.mineDetail}>Inspector: {user.name}</Text> : null}
         </View>
 
         <View style={styles.section}>
@@ -163,83 +187,17 @@ export default function StartInspectionScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Compliance Status</Text>
-          <View style={styles.statusGroup}>
-            {COMPLIANCE_OPTIONS.map((option) => (
-              <Pressable
-                key={option.value}
-                style={[
-                  styles.statusOption,
-                  complianceStatus === option.value && styles.statusOptionSelected,
-                  complianceStatus === option.value &&
-                    option.value === 'pass' &&
-                    styles.statusPass,
-                  complianceStatus === option.value &&
-                    option.value === 'partial' &&
-                    styles.statusPartial,
-                  complianceStatus === option.value &&
-                    option.value === 'fail' &&
-                    styles.statusFail,
-                ]}
-                onPress={() => setComplianceStatus(option.value)}
-              >
-                <Text
-                  style={[
-                    styles.statusOptionText,
-                    complianceStatus === option.value && styles.statusOptionTextSelected,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <CustomInput
-            label="Observations"
-            value={observations}
-            onChangeText={setObservations}
-            placeholder="Document findings, violations, and corrective actions..."
-            multiline
-            numberOfLines={4}
-            style={styles.observationsInput}
-            textAlignVertical="top"
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Device Permissions</Text>
+          <Text style={styles.sectionTitle}>Safety Checklist</Text>
           <Text style={styles.sectionSubtext}>
-            Camera and location access support photo evidence and GPS tagging.
+            Mark each item as Pass, Partial, or Fail. Partial and Fail items require violation details.
           </Text>
-
-          <View style={styles.permissionRow}>
-            <Text style={styles.permissionLabel}>Camera</Text>
-            <Text
-              style={[
-                styles.permissionStatus,
-                cameraStatus === 'Granted' && styles.granted,
-                cameraStatus === 'Denied' && styles.denied,
-              ]}
-            >
-              {cameraStatus}
-            </Text>
-          </View>
-
-          <View style={styles.permissionRow}>
-            <Text style={styles.permissionLabel}>Location</Text>
-            <Text
-              style={[
-                styles.permissionStatus,
-                locationStatus === 'Granted' && styles.granted,
-                locationStatus === 'Denied' && styles.denied,
-              ]}
-            >
-              {locationStatus}
-            </Text>
-          </View>
+          {checklistItems.map((item, index) => (
+            <ChecklistItemCard
+              key={item.id}
+              item={item}
+              onChange={(updated) => handleChecklistChange(index, updated)}
+            />
+          ))}
         </View>
 
         <CustomButton
@@ -278,22 +236,21 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   mineCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.navy,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   mineTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: colors.navy,
+    color: colors.white,
     marginBottom: 12,
   },
   mineDetail: {
     fontSize: 15,
-    color: colors.text,
+    color: colors.white,
+    opacity: 0.85,
     marginBottom: 6,
   },
   section: {
@@ -308,7 +265,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sectionSubtext: {
     fontSize: 13,
@@ -339,68 +296,5 @@ const styles = StyleSheet.create({
   },
   optionChipTextSelected: {
     color: colors.white,
-  },
-  statusGroup: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statusOption: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  statusOptionSelected: {
-    borderWidth: 2,
-  },
-  statusPass: {
-    borderColor: colors.success,
-    backgroundColor: '#E3F9E5',
-  },
-  statusPartial: {
-    borderColor: colors.gold,
-    backgroundColor: '#FFF4E0',
-  },
-  statusFail: {
-    borderColor: colors.error,
-    backgroundColor: '#FFE3E3',
-  },
-  statusOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  statusOptionTextSelected: {
-    color: colors.text,
-  },
-  observationsInput: {
-    minHeight: 100,
-    paddingTop: 12,
-  },
-  permissionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  permissionLabel: {
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  permissionStatus: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  granted: {
-    color: colors.success,
-  },
-  denied: {
-    color: colors.error,
   },
 });

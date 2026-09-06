@@ -8,10 +8,9 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import axios from 'axios';
 import CustomInput from '../components/CustomInput';
 import MineCard from '../components/MineCard';
-import { fetchMines } from '../services/mineService';
+import { getActiveMines } from '../services/mineStorage';
 import { saveSelectedMine } from '../services/storage';
 import colors from '../theme/colors';
 import type { InspectionStackParamList, Mine } from '../types';
@@ -21,22 +20,13 @@ type Props = NativeStackScreenProps<InspectionStackParamList, 'SelectMine'>;
 export default function SelectMineScreen({ navigation }: Props) {
   const [mines, setMines] = useState<Mine[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadMines = useCallback(async () => {
     setLoading(true);
-    setError('');
-
     try {
-      const data = await fetchMines();
-      setMines(data.filter((mine) => mine.status === 'active'));
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message ?? 'Failed to load mines.');
-      } else {
-        setError('An unexpected error occurred.');
-      }
+      const data = await getActiveMines();
+      setMines(data);
     } finally {
       setLoading(false);
     }
@@ -77,17 +67,6 @@ export default function SelectMineScreen({ navigation }: Props) {
     );
   }
 
-  if (error) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
-        <Text style={styles.retryText} onPress={loadMines}>
-          Tap to retry
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
@@ -115,7 +94,7 @@ export default function SelectMineScreen({ navigation }: Props) {
             <Text style={styles.emptyText}>
               {searchQuery.trim()
                 ? 'No active mines match your search.'
-                : 'No active mines available.'}
+                : 'No active mines available. Add mines from the Home screen.'}
             </Text>
           </View>
         }
@@ -155,17 +134,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: colors.textSecondary,
     fontSize: 14,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 15,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  retryText: {
-    color: colors.gold,
-    fontSize: 15,
-    fontWeight: '600',
   },
   empty: {
     alignItems: 'center',

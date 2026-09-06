@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -11,11 +11,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { logout } from '../services/authService';
+import { getUser } from '../services/storage';
 import colors from '../theme/colors';
-import type { MainTabParamList, RootStackParamList } from '../types';
+import type { ProfileStackParamList, RootStackParamList, User } from '../types';
 
-type Props = NativeStackScreenProps<MainTabParamList, 'Profile'>;
+type Props = NativeStackScreenProps<ProfileStackParamList, 'Profile'>;
 
 type SettingItem = {
   id: string;
@@ -24,9 +26,18 @@ type SettingItem = {
   icon: keyof typeof Ionicons.glyphMap;
   accentColor: string;
   hasSwitch?: boolean;
+  route?: keyof ProfileStackParamList;
 };
 
 const SETTINGS_ITEMS: SettingItem[] = [
+  {
+    id: 'hazard-report',
+    title: 'Report a Hazard',
+    subtitle: 'Quick safety hazard reporting',
+    icon: 'warning-outline',
+    accentColor: colors.error,
+    route: 'HazardReport',
+  },
   {
     id: 'assigned-actions',
     title: 'Assigned Actions',
@@ -58,8 +69,22 @@ const SETTINGS_ITEMS: SettingItem[] = [
   },
 ];
 
+function formatRole(role: string): string {
+  return role
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export default function ProfileScreen({ navigation }: Props) {
   const [offlineSyncEnabled, setOfflineSyncEnabled] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      getUser().then(setUser);
+    }, []),
+  );
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -80,7 +105,7 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -88,9 +113,11 @@ export default function ProfileScreen({ navigation }: Props) {
       >
         <View style={styles.profileSection}>
           <Ionicons name="person-circle" size={70} color={colors.navy} />
-          <Text style={styles.profileName}>Sangharsh Sawale</Text>
-          <Text style={styles.profileEmail}>sangharshsawale3@gmail.com</Text>
-          <Text style={styles.roleBadge}>Admin / Inspector</Text>
+          <Text style={styles.profileName}>{user?.name ?? 'MineOS User'}</Text>
+          <Text style={styles.profileEmail}>{user?.email ?? ''}</Text>
+          {user?.role ? (
+            <Text style={styles.roleBadge}>{formatRole(user.role)}</Text>
+          ) : null}
         </View>
 
         <Text style={styles.sectionTitle}>APP SETTINGS</Text>
@@ -101,14 +128,14 @@ export default function ProfileScreen({ navigation }: Props) {
               key={item.id}
               style={({ pressed }) => [styles.settingCard, pressed && styles.settingCardPressed]}
               onPress={() => {
-                if (!item.hasSwitch) {
-                  // Placeholder for future navigation
+                if (item.route) {
+                  navigation.navigate(item.route);
                 }
               }}
             >
               <View style={[styles.accentLine, { backgroundColor: item.accentColor }]} />
               <View style={styles.settingContent}>
-                <View style={[styles.iconContainer, { backgroundColor: '#334155' }]}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.navyLight }]}>
                   <Ionicons name={item.icon} size={22} color={item.accentColor} />
                 </View>
                 <View style={styles.settingText}>
@@ -145,7 +172,7 @@ export default function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -187,7 +214,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   settingCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.navyLight,
     borderRadius: 14,
     overflow: 'hidden',
   },
