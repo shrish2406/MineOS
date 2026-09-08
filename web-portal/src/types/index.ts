@@ -3,7 +3,7 @@ export type Role = (typeof roles)[number]
 export const backendRoles = ['admin', 'mine_manager', 'inspector', 'viewer'] as const
 export type BackendRole = (typeof backendRoles)[number]
 export type AppRole = Role | BackendRole
-export interface User { name: string; email: string; role: AppRole }
+export interface User { id?: string; name: string; email: string; role: AppRole }
 export interface Mine { name: string; location: string; compliance: number; risk: 'High' | 'Medium' | 'Low'; openItems: number }
 export interface ComplianceMetric { label: string; value: string; change: string; tone: 'blue' | 'red' | 'amber' | 'green' }
 export interface Violation { id: string; mine: string; type: string; severity: 'High' | 'Medium' | 'Low'; status: 'Open' | 'Under review' | 'Resolved' }

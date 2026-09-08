@@ -2,7 +2,7 @@ import axios from 'axios'
 import { apiClient } from './api'
 import type { BackendRole, User } from '../types'
 
-interface AuthResponse { token: string; user: { name: string; email: string; role: BackendRole } }
+interface AuthResponse { token: string; user: { id: string; name: string; email: string; role: BackendRole } }
 
 function toUser(response: AuthResponse): { token: string; user: User } {
   return { token: response.token, user: response.user }
