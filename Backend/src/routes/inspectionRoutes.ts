@@ -6,6 +6,6 @@ const router = Router();
 router.use(authenticate);
 router.get("/", listInspections);
 router.get("/:id", getInspection);
-router.post("/", authorize("admin", "mine_manager", "inspector"), createInspection);
-router.patch("/:id", authorize("admin", "mine_manager", "inspector"), updateInspection);
+router.post("/", authorize("admin", "mine_manager", "safety_officer", "inspector"), createInspection);
+router.patch("/:id", authorize("admin", "mine_manager", "safety_officer", "inspector"), updateInspection);
 export default router;

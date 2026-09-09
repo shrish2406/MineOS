@@ -69,7 +69,19 @@ export async function updateInspection(request: AuthenticatedRequest, response: 
     const nextStatus = (body.status ?? inspection.status) as typeof inspection.status;
     if ((nextStatus === "completed" || nextStatus === "follow_up_required") && !(body.completedOn || inspection.completedOn)) throw new Error("completedOn is required for completed inspections");
     const allowed = ["type", "scheduledFor", "completedOn", "status", "location", "gps", "observations", "evidence"];
-    for (const key of allowed) if (key in body) (inspection as unknown as Record<string, unknown>)[key] = key === "evidence" ? normaliseEvidence(body[key], request.user!.id) : key === "scheduledFor" || key === "completedOn" ? parseDate(body[key], key) : body[key];
+    for (const key of allowed) {
+      if (key in body) {
+        if (key === "evidence") {
+          const incoming = normaliseEvidence(body[key], request.user!.id);
+          const existing = Array.isArray(inspection.evidence) ? inspection.evidence : [];
+          (inspection as any).evidence = [...existing, ...incoming];
+        } else if (key === "scheduledFor" || key === "completedOn") {
+          (inspection as any)[key] = parseDate(body[key], key);
+        } else {
+          (inspection as any)[key] = body[key];
+        }
+      }
+    }
     await inspection.save();
     await recordAudit(request, "inspection", inspection.id, "updated", before, inspection.toObject());
     response.json(inspection);

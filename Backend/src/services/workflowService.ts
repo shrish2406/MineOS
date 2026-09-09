@@ -38,15 +38,18 @@ export const violationTransitions: Record<ViolationStatus, ViolationStatus[]> = 
 };
 
 export const actionTransitions: Record<ActionStatus, ActionStatus[]> = {
-  open: ["in_progress", "completed", "overdue"],
-  in_progress: ["completed", "overdue"],
-  completed: ["in_progress"],
-  overdue: ["in_progress", "completed"],
-  verified: []
+  open: ["assigned", "in_progress", "overdue"],
+  assigned: ["in_progress", "overdue"],
+  in_progress: ["evidence_submitted", "completed", "overdue"],
+  evidence_submitted: ["verified", "in_progress"],
+  completed: ["verified", "in_progress"],
+  verified: ["approved", "evidence_submitted"],
+  overdue: ["in_progress", "evidence_submitted", "completed"],
+  approved: []
 };
 
 export function effectiveActionStatus(status: ActionStatus, deadline: Date): ActionStatus {
-  if (status !== "completed" && status !== "verified" && deadline.getTime() < Date.now()) return "overdue";
+  if (status !== "evidence_submitted" && status !== "completed" && status !== "verified" && status !== "approved" && deadline.getTime() < Date.now()) return "overdue";
   return status;
 }
 

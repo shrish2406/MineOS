@@ -23,8 +23,10 @@ export async function register(request: Request, response: Response): Promise<vo
     return;
   }
 
+  const requestedRole = (request.body as { role?: UserRole }).role;
+  const isFirstUser = !(await User.exists({}));
+  const role: UserRole = isFirstUser ? "admin" : (requestedRole && ["admin", "mine_manager", "safety_officer", "corporate_officer", "regulator", "worker", "inspector", "contractor"].includes(requestedRole) ? requestedRole : "worker");
   const passwordHash = await User.hashPassword(password);
-  const role: UserRole = (await User.exists({})) ? "viewer" : "admin";
   const user = await User.create({ name, email, passwordHash, role });
   response.status(201).json({
     token: createToken(user.id, user.role),

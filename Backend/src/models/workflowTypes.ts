@@ -1,4 +1,5 @@
-import { Schema } from "mongoose";
+import { Schema, Types } from "mongoose";
+import crypto from "crypto";
 
 export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 export type Severity = (typeof SEVERITIES)[number];
@@ -9,9 +10,11 @@ export interface EvidenceMetadata {
   mimeType: string;
   sizeBytes: number;
   storageKey: string;
+  url?: string;
+  dataUri?: string;
   capturedAt?: Date;
   gps?: { latitude: number; longitude: number };
-  uploadedBy: Schema.Types.ObjectId;
+  uploadedBy: Types.ObjectId;
   uploadedAt: Date;
 }
 
@@ -22,6 +25,8 @@ export const evidenceSchema = new Schema<EvidenceMetadata>(
     mimeType: { type: String, required: true, trim: true, maxlength: 100 },
     sizeBytes: { type: Number, required: true, min: 0 },
     storageKey: { type: String, required: true, trim: true, maxlength: 500 },
+    url: { type: String, trim: true },
+    dataUri: { type: String },
     capturedAt: { type: Date },
     gps: {
       latitude: { type: Number, min: -90, max: 90 },
@@ -44,15 +49,20 @@ export function normaliseEvidence(input: unknown, uploadedBy: string): EvidenceM
   if (!Array.isArray(input)) return [];
   return input.map((item) => {
     const value = item as Partial<EvidenceMetadata>;
+    const resolvedUserId = (value.uploadedBy && Types.ObjectId.isValid(String(value.uploadedBy)))
+      ? new Types.ObjectId(String(value.uploadedBy))
+      : (Types.ObjectId.isValid(String(uploadedBy)) ? new Types.ObjectId(String(uploadedBy)) : new Types.ObjectId());
     return {
       id: value.id ?? crypto.randomUUID(),
       fileName: value.fileName ?? "unnamed-file",
       mimeType: value.mimeType ?? "application/octet-stream",
       sizeBytes: value.sizeBytes ?? 0,
       storageKey: value.storageKey ?? "pending-upload",
+      url: value.url ?? (value.storageKey ? `/api/uploads/${value.storageKey}` : undefined),
+      dataUri: value.dataUri,
       capturedAt: value.capturedAt ? new Date(value.capturedAt) : undefined,
       gps: value.gps,
-      uploadedBy: new Schema.Types.ObjectId(uploadedBy),
+      uploadedBy: resolvedUserId,
       uploadedAt: value.uploadedAt ? new Date(value.uploadedAt) : new Date()
     };
   });

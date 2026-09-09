@@ -5,6 +5,6 @@ import { createViolation, listViolations, updateViolation } from "../controllers
 const router = Router();
 router.use(authenticate);
 router.get("/", listViolations);
-router.post("/", authorize("admin", "mine_manager", "inspector"), createViolation);
-router.patch("/:id", authorize("admin", "mine_manager", "inspector"), updateViolation);
+router.post("/", authorize("admin", "mine_manager", "safety_officer", "inspector"), createViolation);
+router.patch("/:id", authorize("admin", "mine_manager", "safety_officer", "inspector"), updateViolation);
 export default router;
