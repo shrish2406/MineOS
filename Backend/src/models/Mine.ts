@@ -6,6 +6,10 @@ export interface IMine extends Document {
   location: string;
   operator: string;
   status: "active" | "inactive";
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
   createdBy: Schema.Types.ObjectId;
 }
 
@@ -16,6 +20,10 @@ const mineSchema = new Schema<IMine>(
     location: { type: String, required: true, trim: true, maxlength: 200 },
     operator: { type: String, required: true, trim: true, maxlength: 150 },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
+    coordinates: {
+      latitude: { type: Number },
+      longitude: { type: Number }
+    },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true }
   },
   { timestamps: true }
