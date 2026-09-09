@@ -16,13 +16,29 @@ export async function getMine(request: AuthenticatedRequest, response: Response)
 }
 
 export async function createMine(request: AuthenticatedRequest, response: Response): Promise<void> {
-  const { name, code, location, operator } = request.body as Record<string, string>;
+  const { name, code, location, operator, coordinates } = request.body as Record<string, any>;
   if (!name || !code || !location || !operator) {
     response.status(400).json({ message: "name, code, location and operator are required" });
     return;
   }
   try {
-    const mine = await Mine.create({ name, code, location, operator, createdBy: request.user!.id });
+    let parsedCoordinates: { latitude: number; longitude: number } | undefined;
+    if (coordinates && coordinates.latitude != null && coordinates.longitude != null) {
+      const lat = Number(coordinates.latitude);
+      const lng = Number(coordinates.longitude);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        parsedCoordinates = { latitude: lat, longitude: lng };
+      }
+    }
+
+    const mine = await Mine.create({
+      name,
+      code,
+      location,
+      operator,
+      coordinates: parsedCoordinates,
+      createdBy: request.user!.id
+    });
     response.status(201).json(mine);
   } catch (error: unknown) {
     if ((error as { code?: number }).code === 11000) {
@@ -34,7 +50,18 @@ export async function createMine(request: AuthenticatedRequest, response: Respon
 }
 
 export async function updateMine(request: AuthenticatedRequest, response: Response): Promise<void> {
-  const mine = await Mine.findByIdAndUpdate(request.params.id, request.body, { new: true, runValidators: true });
+  const updateData: Record<string, any> = { ...request.body };
+  if (updateData.coordinates) {
+    const lat = Number(updateData.coordinates.latitude);
+    const lng = Number(updateData.coordinates.longitude);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      updateData.coordinates = { latitude: lat, longitude: lng };
+    } else {
+      delete updateData.coordinates;
+    }
+  }
+
+  const mine = await Mine.findByIdAndUpdate(request.params.id, updateData, { new: true, runValidators: true });
   if (!mine) {
     response.status(404).json({ message: "Mine not found" });
     return;

@@ -1,10 +1,16 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { authErrorMessage, authService } from '../services/auth'
 import { tokenKey } from '../services/api'
-import type { User } from '../types'
+import type { Role, User } from '../types'
 
 interface AuthResult { success: boolean; message?: string }
-interface AuthContextValue { user: User | null; login: (email: string, password: string, remember: boolean) => Promise<AuthResult>; register: (name: string, email: string, password: string, remember: boolean) => Promise<AuthResult>; logout: () => void }
+interface AuthContextValue {
+  user: User | null
+  login: (email: string, password: string, remember: boolean) => Promise<AuthResult>
+  register: (name: string, email: string, password: string, remember: boolean, role?: string) => Promise<AuthResult>
+  logout: () => void
+  switchRole: (role: Role) => void
+}
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 const storageKey = 'minsos-session'
 
@@ -27,14 +33,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: true }
       } catch (error) { return { success: false, message: authErrorMessage(error) } }
     },
-    register: async (name, email, password, remember) => {
+    register: async (name, email, password, remember, role) => {
       try {
-        const session = await authService.register(name.trim(), email.trim(), password)
+        const session = await authService.register(name.trim(), email.trim(), password, role)
         setPersistent(remember); setUser(session.user); setToken(session.token)
         return { success: true }
       } catch (error) { return { success: false, message: authErrorMessage(error) } }
     },
     logout: () => { setUser(null); setToken(null) },
+    switchRole: (newRole: Role) => {
+      setUser((prev) => (prev ? { ...prev, role: newRole } : null))
+    }
   }), [user, token, persistent])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
