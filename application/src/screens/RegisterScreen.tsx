@@ -42,7 +42,7 @@ export default function RegisterScreen({ navigation }: Props) {
     setLoading(true);
 
     try {
-      const response = await register(fullName.trim(), email.trim(), password);
+      await register(fullName.trim(), email.trim(), password, 'worker');
       const goHome = () => {
         navigation.reset({
           index: 0,
@@ -50,24 +50,11 @@ export default function RegisterScreen({ navigation }: Props) {
         });
       };
 
-      if (response.user.role === 'admin') {
-        Alert.alert(
-          'Welcome!',
-          'You are the first user and have been assigned the Admin role.',
-          [{ text: 'OK', onPress: goHome }],
-        );
-      } else {
-        goHome();
-      }
+      goHome();
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        console.error('[RegisterScreen] Registration failed:', err.response?.data ?? err.message);
         setError(err.response?.data?.message ?? 'Registration failed. Please try again.');
-      } else if (err instanceof Error) {
-        console.error('[RegisterScreen] Registration failed:', err.message);
-        setError('An unexpected error occurred. Please try again.');
       } else {
-        console.error('[RegisterScreen] Registration failed:', err);
         setError('An unexpected error occurred. Please try again.');
       }
     } finally {

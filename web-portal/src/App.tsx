@@ -31,6 +31,7 @@ import {
   WorkerTrainingPage,
   WorkerProfilePage
 } from './pages/WorkerWorkspacePages'
+import { WorkerAttendanceManagementPage } from './pages/WorkerAttendanceManagementPage'
 
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { useAuth } from './context/AuthContext'
@@ -94,6 +95,7 @@ export default function App() {
           {/* Operations, Contractors & Environment */}
           <Route path="/:role/contractors" element={<ContractorsPage />} />
           <Route path="/:role/workers" element={<WorkersRosterPage />} />
+          <Route path="/:role/worker-attendance" element={<WorkerAttendanceManagementPage />} />
           <Route path="/:role/production" element={<ProductionPage />} />
           <Route path="/:role/environment" element={<EnvironmentPage />} />
 

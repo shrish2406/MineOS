@@ -1,16 +1,18 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import axios from 'axios';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import CustomInput from '../components/CustomInput';
 import MineCard from '../components/MineCard';
-import { getActiveMines } from '../services/mineStorage';
+import { fetchMines } from '../services/mineService';
 import { saveSelectedMine } from '../services/storage';
 import colors from '../theme/colors';
 import type { InspectionStackParamList, Mine } from '../types';
@@ -25,8 +27,14 @@ export default function SelectMineScreen({ navigation }: Props) {
   const loadMines = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getActiveMines();
-      setMines(data);
+      const data = await fetchMines();
+      setMines(data.filter((mine) => mine.status === 'active'));
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? (err.response?.data?.message as string) ?? 'Failed to load mines from server.'
+        : 'Failed to load mines from server.';
+      Alert.alert('Error', message);
+      setMines([]);
     } finally {
       setLoading(false);
     }
@@ -86,7 +94,10 @@ export default function SelectMineScreen({ navigation }: Props) {
         data={filteredMines}
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
-          <MineCard mine={item} onPress={() => handleSelectMine(item)} />
+          <MineCard
+            mine={item}
+            onPress={() => handleSelectMine(item)}
+          />
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={

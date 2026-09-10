@@ -1,9 +1,25 @@
 import { Response } from "express";
+import mongoose from "mongoose";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { Mine } from "../models/Mine";
 
 export async function listMines(_request: AuthenticatedRequest, response: Response): Promise<void> {
-  response.json(await Mine.find().sort({ createdAt: -1 }));
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error("Database connection is not established");
+    }
+
+    const mines = await Mine.find({}).sort({ createdAt: -1 });
+    response.json(mines);
+  } catch (error: unknown) {
+    const requestError = error instanceof Error ? error : new Error(String(error));
+    console.error("Failed to list mines:", requestError);
+    response.status(500).json({
+      message: "Internal server error",
+      error: requestError.message,
+      stack: requestError.stack,
+    });
+  }
 }
 
 export async function getMine(request: AuthenticatedRequest, response: Response): Promise<void> {

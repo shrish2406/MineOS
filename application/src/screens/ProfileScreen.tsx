@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -31,12 +31,12 @@ type SettingItem = {
 
 const SETTINGS_ITEMS: SettingItem[] = [
   {
-    id: 'hazard-report',
-    title: 'Report a Hazard',
-    subtitle: 'Quick safety hazard reporting',
-    icon: 'warning-outline',
-    accentColor: colors.error,
-    route: 'HazardReport',
+    id: 'attendance-check-in',
+    title: 'Attendance Check-In',
+    subtitle: 'Submit a geo-tagged attendance photo',
+    icon: 'camera-outline',
+    accentColor: colors.success,
+    route: 'AttendanceCheckIn',
   },
   {
     id: 'assigned-actions',
@@ -69,13 +69,6 @@ const SETTINGS_ITEMS: SettingItem[] = [
   },
 ];
 
-function formatRole(role: string): string {
-  return role
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
 export default function ProfileScreen({ navigation }: Props) {
   const [offlineSyncEnabled, setOfflineSyncEnabled] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -85,6 +78,8 @@ export default function ProfileScreen({ navigation }: Props) {
       getUser().then(setUser);
     }, []),
   );
+
+  const visibleSettings = useMemo(() => SETTINGS_ITEMS, []);
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -115,15 +110,13 @@ export default function ProfileScreen({ navigation }: Props) {
           <Ionicons name="person-circle" size={70} color={colors.navy} />
           <Text style={styles.profileName}>{user?.name ?? 'MineOS User'}</Text>
           <Text style={styles.profileEmail}>{user?.email ?? ''}</Text>
-          {user?.role ? (
-            <Text style={styles.roleBadge}>{formatRole(user.role)}</Text>
-          ) : null}
+          <Text style={styles.roleBadge}>Mine Worker</Text>
         </View>
 
         <Text style={styles.sectionTitle}>APP SETTINGS</Text>
 
         <View style={styles.settingsList}>
-          {SETTINGS_ITEMS.map((item) => (
+          {visibleSettings.map((item) => (
             <Pressable
               key={item.id}
               style={({ pressed }) => [styles.settingCard, pressed && styles.settingCardPressed]}

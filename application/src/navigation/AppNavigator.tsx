@@ -8,15 +8,14 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AddMineScreen from '../screens/AddMineScreen';
-import SelectMineScreen from '../screens/SelectMineScreen';
-import StartInspectionScreen from '../screens/StartInspectionScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import HazardReportScreen from '../screens/HazardReportScreen';
+import AttendanceCheckInScreen from '../screens/AttendanceCheckInScreen';
 import { hasValidSession } from '../services/storage';
 import colors from '../theme/colors';
 import type {
   HomeStackParamList,
-  InspectionStackParamList,
+  HazardStackParamList,
   MainTabParamList,
   ProfileStackParamList,
   RootStackParamList,
@@ -25,7 +24,7 @@ import type {
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
-const InspectionStack = createNativeStackNavigator<InspectionStackParamList>();
+const HazardStack = createNativeStackNavigator<HazardStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 
 const stackScreenOptions = {
@@ -52,20 +51,15 @@ function HomeStackNavigator() {
   );
 }
 
-function InspectionStackNavigator() {
+function HazardStackNavigator() {
   return (
-    <InspectionStack.Navigator screenOptions={stackScreenOptions}>
-      <InspectionStack.Screen
-        name="SelectMine"
-        component={SelectMineScreen}
-        options={{ title: 'Select Mine' }}
+    <HazardStack.Navigator screenOptions={stackScreenOptions}>
+      <HazardStack.Screen
+        name="HazardReport"
+        component={HazardReportScreen}
+        options={{ title: 'Report a Hazard' }}
       />
-      <InspectionStack.Screen
-        name="StartInspection"
-        component={StartInspectionScreen}
-        options={{ title: 'Start Inspection' }}
-      />
-    </InspectionStack.Navigator>
+    </HazardStack.Navigator>
   );
 }
 
@@ -78,9 +72,9 @@ function ProfileStackNavigator() {
         options={{ headerShown: false }}
       />
       <ProfileStack.Screen
-        name="HazardReport"
-        component={HazardReportScreen}
-        options={{ title: 'Report Hazard' }}
+        name="AttendanceCheckIn"
+        component={AttendanceCheckInScreen}
+        options={{ title: 'Attendance Check-In' }}
       />
     </ProfileStack.Navigator>
   );
@@ -110,12 +104,12 @@ function MainTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Inspections"
-        component={InspectionStackNavigator}
+        name="HazardTab"
+        component={HazardStackNavigator}
         options={{
-          tabBarLabel: 'Inspections',
+          tabBarLabel: 'Report a Hazard',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="clipboard" size={size} color={color} />
+            <Ionicons name="warning" size={size} color={color} />
           ),
         }}
       />

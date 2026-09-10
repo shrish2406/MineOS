@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CameraCapture from './CameraCapture';
-import { captureGpsCoordinates } from '../services/locationService';
 import colors from '../theme/colors';
 import type {
   ChecklistItemResult,
   ComplianceStatus,
-  GpsCoordinates,
+  GeoTaggedImage,
   SeverityLevel,
 } from '../types';
 
@@ -38,17 +36,18 @@ interface ChecklistItemCardProps {
 }
 
 export default function ChecklistItemCard({ item, onChange }: ChecklistItemCardProps) {
-  const [gpsLoading, setGpsLoading] = useState(false);
   const showViolationForm = item.status === 'partial' || item.status === 'fail';
 
-  const updateViolation = (field: keyof NonNullable<ChecklistItemResult['violation']>, value: string | GpsCoordinates | undefined) => {
+  const updateViolation = (
+    field: keyof NonNullable<ChecklistItemResult['violation']>,
+    value: string | GeoTaggedImage | undefined,
+  ) => {
     onChange({
       ...item,
       violation: {
         observationNotes: item.violation?.observationNotes ?? '',
         severity: item.violation?.severity ?? 'MEDIUM',
-        photoUri: item.violation?.photoUri,
-        gps: item.violation?.gps,
+        geoTaggedImage: item.violation?.geoTaggedImage,
         [field]: value,
       },
     });
@@ -68,29 +67,6 @@ export default function ChecklistItemCard({ item, onChange }: ChecklistItemCardP
       });
     }
   };
-
-  useEffect(() => {
-    if (!showViolationForm || item.violation?.gps) {
-      return;
-    }
-
-    setGpsLoading(true);
-    captureGpsCoordinates()
-      .then((coords) => {
-        if (coords) {
-          onChange({
-            ...item,
-            violation: {
-              observationNotes: item.violation?.observationNotes ?? '',
-              severity: item.violation?.severity ?? 'MEDIUM',
-              photoUri: item.violation?.photoUri,
-              gps: coords,
-            },
-          });
-        }
-      })
-      .finally(() => setGpsLoading(false));
-  }, [showViolationForm, item.id, item.violation?.gps]);
 
   return (
     <View style={styles.card}>
@@ -171,25 +147,10 @@ export default function ChecklistItemCard({ item, onChange }: ChecklistItemCardP
           </View>
 
           <CameraCapture
-            photoUri={item.violation?.photoUri ?? null}
-            onPhotoCaptured={(uri) => updateViolation('photoUri', uri)}
-            onPhotoRemoved={() => updateViolation('photoUri', undefined)}
+            geoTaggedImage={item.violation?.geoTaggedImage ?? null}
+            onImageCaptured={(image) => updateViolation('geoTaggedImage', image)}
+            onImageRemoved={() => updateViolation('geoTaggedImage', undefined)}
           />
-
-          <View style={styles.gpsRow}>
-            <Ionicons name="location-outline" size={18} color={colors.navy} />
-            {gpsLoading ? (
-              <Text style={styles.gpsText}>Capturing GPS coordinates...</Text>
-            ) : item.violation?.gps ? (
-              <Text style={styles.gpsText}>
-                {item.violation.gps.latitude.toFixed(5)}, {item.violation.gps.longitude.toFixed(5)}
-                {' · '}
-                {new Date(item.violation.gps.timestamp).toLocaleTimeString()}
-              </Text>
-            ) : (
-              <Text style={styles.gpsTextMuted}>GPS unavailable — enable location permissions</Text>
-            )}
-          </View>
         </View>
       ) : null}
     </View>
@@ -293,23 +254,5 @@ const styles = StyleSheet.create({
   },
   severityTextSelected: {
     color: colors.white,
-  },
-  gpsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-    paddingTop: 8,
-  },
-  gpsText: {
-    flex: 1,
-    fontSize: 12,
-    color: colors.text,
-  },
-  gpsTextMuted: {
-    flex: 1,
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
   },
 });

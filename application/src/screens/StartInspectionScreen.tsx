@@ -9,11 +9,13 @@ import {
   Text,
   View,
 } from 'react-native';
+import axios from 'axios';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import ChecklistItemCard from '../components/ChecklistItemCard';
 import CustomButton from '../components/CustomButton';
-import { saveInspection } from '../services/inspectionStorage';
+import { submitInspection } from '../services/inspectionService';
+import { captureGpsCoordinates } from '../services/locationService';
 import { getSelectedMine, getUser } from '../services/storage';
 import colors from '../theme/colors';
 import type {
@@ -87,7 +89,21 @@ export default function StartInspectionScreen({ navigation }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (!mine || !user) {
+    if (!mine) {
+      Alert.alert('Validation', 'Please select a mine before submitting.');
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('Error', 'User session not found. Please sign in again.');
+      return;
+    }
+
+    const mineId = mine._id;
+    const inspectorId = user.id;
+
+    if (!mineId || !inspectorId) {
+      Alert.alert('Error', 'Missing mine or inspector information. Please sign in again and reselect the mine.');
       return;
     }
 
@@ -97,25 +113,42 @@ export default function StartInspectionScreen({ navigation }: Props) {
       return;
     }
 
+    let gps;
+    try {
+      gps = await captureGpsCoordinates();
+    } catch {
+      Alert.alert('Location Error', 'Unable to read your current location. Please try again.');
+      return;
+    }
+    if (!gps) {
+      Alert.alert(
+        'Location Required',
+        'Enable location permissions and try again so this inspection can be submitted with GPS coordinates.',
+      );
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       const record: InspectionRecord = {
         id: `insp_${Date.now()}`,
-        mineId: mine._id,
+        mineId,
         mineName: mine.name,
-        inspectorId: user.id,
+        mineLocation: mine.location,
+        inspectorId,
         inspectorName: user.name,
         inspectionType,
         checklistItems,
+        gps,
         submittedAt: new Date().toISOString(),
       };
 
-      await saveInspection(record);
+      await submitInspection(record);
 
       Alert.alert(
         'Inspection Submitted',
-        `${INSPECTION_TYPES.find((t) => t.value === inspectionType)?.label} for ${mine.name} has been saved locally.`,
+        `${INSPECTION_TYPES.find((t) => t.value === inspectionType)?.label} for ${mine.name} has been submitted to the server.`,
         [
           {
             text: 'OK',
@@ -125,8 +158,11 @@ export default function StartInspectionScreen({ navigation }: Props) {
           },
         ],
       );
-    } catch {
-      Alert.alert('Error', 'Failed to save inspection. Please try again.');
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? (err.response?.data?.message as string) ?? 'Failed to submit inspection.'
+        : 'Failed to submit inspection. Please try again.';
+      Alert.alert('Error', message);
     } finally {
       setSubmitting(false);
     }
@@ -138,11 +174,13 @@ export default function StartInspectionScreen({ navigation }: Props) {
         <Text style={styles.noMineText}>
           No mine selected. Please go back and select a mine.
         </Text>
-        <CustomButton
-          title="Select Mine"
-          onPress={() => navigation.navigate('SelectMine')}
-          style={styles.selectMineButton}
-        />
+        {user ? (
+          <CustomButton
+            title="Select Mine"
+            onPress={() => navigation.navigate('SelectMine')}
+            style={styles.selectMineButton}
+          />
+        ) : null}
       </View>
     );
   }
@@ -200,11 +238,13 @@ export default function StartInspectionScreen({ navigation }: Props) {
           ))}
         </View>
 
-        <CustomButton
-          title="Submit Inspection"
-          onPress={handleSubmit}
-          loading={submitting}
-        />
+        {user ? (
+          <CustomButton
+            title="Submit Inspection"
+            onPress={handleSubmit}
+            loading={submitting}
+          />
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );

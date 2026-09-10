@@ -639,4 +639,27 @@ export interface WorkerAttendanceItem {
   status: string
 }
 
+export interface GeoAttendanceWorker {
+  _id: string
+  name: string
+  email: string
+  role?: string
+}
+
+export interface GeoAttendanceRecord {
+  _id: string
+  id?: string
+  workerId?: string | GeoAttendanceWorker
+  imageUrl?: string
+  location?: {
+    latitude: number
+    longitude: number
+  }
+  status: 'Pending' | 'Present' | 'Absent' | string
+  timestamp?: string
+  worker?: GeoAttendanceWorker
+  createdAt?: string
+  updatedAt?: string
+}
+
 

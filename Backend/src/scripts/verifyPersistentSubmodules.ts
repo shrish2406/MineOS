@@ -19,7 +19,7 @@ async function verifyAllPersistentSubmodules(): Promise<void> {
   console.log('   MINSOS SUBMODULES MONGODB PERSISTENCE VERIFICATION SUITE    ');
   console.log('===============================================================');
 
-  await connectDatabase(env.mongoUri, env.mongoDnsServers);
+  await connectDatabase(env.mongoUri);
   const BASE_URL = 'http://localhost:5000/api';
 
   // 1. Get tokens for safety officer and mine manager

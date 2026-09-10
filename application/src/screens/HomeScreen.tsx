@@ -1,26 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  Modal,
-  Pressable,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import MineCard from '../components/MineCard';
-import { loadMines, saveMines } from '../services/mineStorage';
-import { getUser, saveSelectedMine } from '../services/storage';
+import { fetchMines } from '../services/mineService';
+import { getUser } from '../services/storage';
 import colors from '../theme/colors';
-import type { HomeStackParamList, Mine, User } from '../types';
-import { canDeleteMines, canManageMines } from '../types';
-
-type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
+import type { Mine, User } from '../types';
 
 const TODAY_TASKS = [
   { id: '1', title: 'Ventilation check — Section B', due: '10:00 AM' },
@@ -47,85 +40,40 @@ function severityColor(severity: string): string {
   }
 }
 
-function formatRole(role: string): string {
-  return role
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-export default function HomeScreen({ navigation }: Props) {
+export default function HomeScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [mines, setMines] = useState<Mine[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [mineName, setMineName] = useState('');
-  const [mineCode, setMineCode] = useState('');
-  const [location, setLocation] = useState('');
-  const [operator, setOperator] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadMines().then(setMines);
+  const loadMinesFromApi = useCallback(async () => {
+    try {
+      const data = await fetchMines();
+      setMines(data);
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? (err.response?.data?.message as string) ?? 'Failed to load mines.'
+        : 'Failed to load mines.';
+      Alert.alert('Error', message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       getUser().then(setUser);
-    }, []),
+      loadMinesFromApi();
+    }, [loadMinesFromApi]),
   );
-
-  const handleMinePress = async (mine: Mine) => {
-    if (mine.status !== 'active') {
-      return;
-    }
-    await saveSelectedMine(mine);
-    navigation.getParent()?.navigate('Inspections', { screen: 'StartInspection' });
-  };
-
-  const handleDelete = async (id: string) => {
-    const updatedMines = mines.filter((mine) => mine._id !== id);
-    setMines(updatedMines);
-    await saveMines(updatedMines);
-  };
-
-  const resetModal = () => {
-    setMineName('');
-    setMineCode('');
-    setLocation('');
-    setOperator('');
-    setModalVisible(false);
-  };
-
-  const handleSaveMine = async () => {
-    const newMine: Mine = {
-      _id: Date.now().toString(),
-      name: mineName.trim(),
-      code: mineCode.trim(),
-      location: location.trim(),
-      operator: operator.trim(),
-      status: 'active',
-      createdBy: 'local',
-    };
-    const updatedMines = [newMine, ...mines];
-    setMines(updatedMines);
-    await saveMines(updatedMines);
-    setMineName('');
-    setMineCode('');
-    setLocation('');
-    setOperator('');
-    setModalVisible(false);
-  };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    const refreshed = await loadMines();
-    setMines(refreshed);
+    await loadMinesFromApi();
     setRefreshing(false);
   };
 
   const greeting = user?.name ? `Welcome, ${user.name}` : 'Welcome';
-  const canAdd = user ? canManageMines(user.role) : false;
-  const canDelete = user ? canDeleteMines(user.role) : false;
 
   return (
     <ScrollView
@@ -137,9 +85,7 @@ export default function HomeScreen({ navigation }: Props) {
     >
       <View style={styles.greetingCard}>
         <Text style={styles.greeting}>{greeting}</Text>
-        {user?.role ? (
-          <Text style={styles.roleBadge}>{formatRole(user.role)}</Text>
-        ) : null}
+        <Text style={styles.roleBadge}>Mine Worker</Text>
         <Text style={styles.greetingSubtext}>
           MineOS — Coal Mine Governance & Compliance Dashboard
         </Text>
@@ -148,14 +94,13 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Registered Mines</Text>
-          {canAdd ? (
-            <Pressable onPress={() => setModalVisible(true)}>
-              <Text style={styles.addLink}>+ Add Mine</Text>
-            </Pressable>
-          ) : null}
         </View>
 
-        {mines.length === 0 ? (
+        {loading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Loading mines from server...</Text>
+          </View>
+        ) : mines.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>
               No mines registered yet. Tap '+ Add Mine' to begin.
@@ -165,20 +110,8 @@ export default function HomeScreen({ navigation }: Props) {
           mines.map((mine) => (
             <View key={mine._id} style={styles.mineRow}>
               <View style={styles.mineCardWrapper}>
-                <MineCard
-                  mine={mine}
-                  onPress={mine.status === 'active' ? () => handleMinePress(mine) : undefined}
-                />
+                <MineCard mine={mine} />
               </View>
-              {canDelete ? (
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDelete(mine._id)}
-                  accessibilityLabel={`Delete ${mine.name}`}
-                >
-                  <Ionicons name="trash-outline" size={22} color={colors.error} />
-                </TouchableOpacity>
-              ) : null}
             </View>
           ))
         )}
@@ -209,62 +142,6 @@ export default function HomeScreen({ navigation }: Props) {
         ))}
       </View>
 
-      <Modal visible={isModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Register New Mine</Text>
-
-            <Text style={styles.inputLabel}>Mine Name</Text>
-            <TextInput
-              style={styles.textInput}
-              value={mineName}
-              onChangeText={setMineName}
-              placeholder="e.g., North Ridge Coal Mine"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="words"
-            />
-
-            <Text style={styles.inputLabel}>Mine Code</Text>
-            <TextInput
-              style={styles.textInput}
-              value={mineCode}
-              onChangeText={setMineCode}
-              placeholder="e.g., NRM-882"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="characters"
-            />
-
-            <Text style={styles.inputLabel}>Location</Text>
-            <TextInput
-              style={styles.textInput}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="e.g., Kentucky, USA"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="words"
-            />
-
-            <Text style={styles.inputLabel}>Operator</Text>
-            <TextInput
-              style={styles.textInput}
-              value={operator}
-              onChangeText={setOperator}
-              placeholder="e.g., Apex Mining Corp"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="words"
-            />
-
-            <View style={styles.modalActions}>
-              <Pressable style={styles.cancelButton} onPress={resetModal}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.saveButton} onPress={handleSaveMine}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
@@ -380,73 +257,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     marginLeft: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 6,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: colors.text,
-    marginBottom: 16,
-    backgroundColor: colors.white,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 8,
-  },
-  cancelButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  saveButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: colors.navy,
-  },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.white,
   },
 });

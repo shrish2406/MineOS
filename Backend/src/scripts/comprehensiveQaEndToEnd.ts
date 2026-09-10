@@ -69,7 +69,7 @@ async function runComprehensiveQA() {
   }
 
   try {
-    await connectDatabase(env.mongoUri, env.mongoDnsServers);
+    await connectDatabase(env.mongoUri);
     const dbState = mongoose.connection.readyState;
     recordTest('ENVIRONMENT', 'MongoDB Database Connectivity', dbState === 1, undefined, `Mongoose state: ${dbState}`);
   } catch (err: any) {

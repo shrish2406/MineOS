@@ -23,7 +23,7 @@ import { WorkerAttendance } from "../models/WorkerAttendance";
 async function seed(): Promise<void> {
   console.log("=== MINSOS Database Seeder ===");
   console.log("Connecting to MongoDB Atlas...");
-  await connectDatabase(env.mongoUri, env.mongoDnsServers);
+  await connectDatabase(env.mongoUri);
 
   // 1. Clear existing demo data (or keep admin)
   console.log("Clearing existing operational collections...");

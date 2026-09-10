@@ -1,5 +1,15 @@
-export type UserRole = 'admin' | 'mine_manager' | 'inspector' | 'viewer';
+export type UserRole =
+  | 'admin'
+  | 'mine_manager'
+  | 'safety_officer'
+  | 'corporate_officer'
+  | 'regulator'
+  | 'worker'
+  | 'inspector'
+  | 'contractor'
+  | 'viewer';
 
+/** Display labels shown in the registration role picker. */
 export interface User {
   id: string;
   name: string;
@@ -52,13 +62,23 @@ export interface GpsCoordinates {
   latitude: number;
   longitude: number;
   timestamp: string;
+  /** Horizontal accuracy reported by the device, when available. */
+  accuracyMeters?: number;
+}
+
+/** Unified geo-tagged image: photo URI bundled with capture-time GPS metadata. */
+export interface GeoTaggedImage {
+  uri: string;
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  accuracyMeters?: number;
 }
 
 export interface ViolationEvidence {
   observationNotes: string;
   severity: SeverityLevel;
-  photoUri?: string;
-  gps?: GpsCoordinates;
+  geoTaggedImage?: GeoTaggedImage;
 }
 
 export interface ChecklistItemResult {
@@ -73,17 +93,20 @@ export interface InspectionRecord {
   id: string;
   mineId: string;
   mineName: string;
+  mineLocation: string;
   inspectorId: string;
   inspectorName: string;
   inspectionType: InspectionType;
   checklistItems: ChecklistItemResult[];
+  /** GPS captured when the inspection is submitted. */
+  gps: GpsCoordinates;
   submittedAt: string;
 }
 
 export interface HazardReport {
   id: string;
   description: string;
-  photoUri?: string;
+  geoTaggedImage?: GeoTaggedImage;
   gps: GpsCoordinates;
   reporterId: string;
   reporterName: string;
@@ -108,7 +131,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Inspections: undefined;
+  HazardTab: undefined;
   Profile: undefined;
 };
 
@@ -117,20 +140,17 @@ export type HomeStackParamList = {
   AddMine: undefined;
 };
 
+/** Legacy internal flow types retained for the existing inspection components. */
 export type InspectionStackParamList = {
   SelectMine: undefined;
   StartInspection: undefined;
 };
 
-export type ProfileStackParamList = {
-  Profile: undefined;
+export type HazardStackParamList = {
   HazardReport: undefined;
 };
 
-export function canManageMines(role: UserRole): boolean {
-  return role === 'admin' || role === 'mine_manager';
-}
-
-export function canDeleteMines(role: UserRole): boolean {
-  return role === 'admin';
-}
+export type ProfileStackParamList = {
+  Profile: undefined;
+  AttendanceCheckIn: undefined;
+};

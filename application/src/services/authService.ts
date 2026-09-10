@@ -27,12 +27,14 @@ export async function register(
   name: string,
   email: string,
   password: string,
+  role: string,
 ): Promise<LoginResponse> {
   try {
     const { data } = await api.post<LoginResponse>('/auth/register', {
       name,
       email,
       password,
+      role,
     });
     await saveToken(data.token);
     await saveUser(data.user);

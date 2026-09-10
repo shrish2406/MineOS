@@ -9,7 +9,7 @@ import { User } from "../models/User";
 
 async function simulate(): Promise<void> {
   console.log("=== MINSOS Real-Time Telemetry & Event Simulator ===");
-  await connectDatabase(env.mongoUri, env.mongoDnsServers);
+  await connectDatabase(env.mongoUri);
 
   const [mines, users] = await Promise.all([
     Mine.find({ status: "active" }),

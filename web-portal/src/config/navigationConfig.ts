@@ -17,6 +17,7 @@ export const ROLE_NAVIGATION_CONFIG: Record<string, NavItem[]> = {
     { label: 'Contractors', path: 'contractors', symbol: '♙' },
     { label: 'Compliance Master', path: 'compliance', symbol: '✓' },
     { label: 'Documents', path: 'documents', symbol: '📁' },
+    { label: 'Worker Attendance', path: 'worker-attendance', symbol: '⏱' },
     { label: 'Notifications', path: 'notifications', symbol: '🔔' },
     { label: 'Audit Logs', path: 'audit', symbol: '🕒' },
     { label: 'System Settings', path: 'settings', symbol: '⚙' }
@@ -50,6 +51,7 @@ export const ROLE_NAVIGATION_CONFIG: Record<string, NavItem[]> = {
     { label: 'Incidents', path: 'incidents', symbol: '⚠' },
     { label: 'Contractors', path: 'contractors', symbol: '♙' },
     { label: 'Workers', path: 'workers', symbol: '👷' },
+    { label: 'Worker Attendance', path: 'worker-attendance', symbol: '⏱' },
     { label: 'Production', path: 'production', symbol: '🏭' },
     { label: 'Environment', path: 'environment', symbol: '🌱' },
     { label: 'GIS Map', path: 'gis', symbol: '🗺' },
@@ -62,6 +64,7 @@ export const ROLE_NAVIGATION_CONFIG: Record<string, NavItem[]> = {
   // 🛡️ Safety Officer
   safety_officer: [
     { label: 'Dashboard', path: 'dashboard', symbol: '▦' },
+    { label: 'Worker Attendance', path: 'worker-attendance', symbol: '⏱' },
     { label: 'Inspections', path: 'inspections', symbol: '⌕' },
     { label: 'Safety Observations', path: 'observations', symbol: '👁' },
     { label: 'Violations', path: 'violations', symbol: '!' },
