@@ -681,6 +681,7 @@ export function NavIcon({ path, className = 'w-4 h-4' }: { path: string; classNa
     case 'tasks':
       return <TasksIcon className={className} />
     case 'attendance':
+    case 'worker-attendance':
       return <AttendanceIcon className={className} />
     case 'training':
       return <TrainingIcon className={className} />

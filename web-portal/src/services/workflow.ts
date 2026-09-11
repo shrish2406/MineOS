@@ -28,7 +28,8 @@ import type {
   ApprovalRequestItem,
   SafetyObservationItem,
   WorkerTaskItem,
-  WorkerAttendanceItem
+  WorkerAttendanceItem,
+  GeoAttendanceRecord
 } from '../types'
 
 export interface PageResult<T> {
@@ -478,5 +479,28 @@ export const workflowService = {
   toggleWorkerTask: async (id: string): Promise<WorkerTaskItem> =>
     (await apiClient.patch<WorkerTaskItem>(`/workers/tasks/${id}/toggle`)).data,
   workerAttendanceHistory: async (): Promise<WorkerAttendanceItem[]> =>
-    (await apiClient.get<WorkerAttendanceItem[]>('/workers/attendance')).data
+    (await apiClient.get<WorkerAttendanceItem[]>('/workers/attendance')).data,
+
+  pendingGeoAttendance: async (): Promise<GeoAttendanceRecord[]> => {
+    const response = await apiClient.get<{ data: GeoAttendanceRecord[] }>('/attendance/pending')
+    return response.data.data.map((record) => ({
+      ...record,
+      worker:
+        record.worker ??
+        (typeof record.workerId === 'object' ? (record.workerId as GeoAttendanceRecord['worker']) : undefined)
+    }))
+  },
+
+  allGeoAttendance: async (params?: Record<string, string | number | undefined>): Promise<GeoAttendanceRecord[]> => {
+    const response = await apiClient.get<{ data: GeoAttendanceRecord[] }>('/attendance/all', { params })
+    return response.data.data.map((record) => ({
+      ...record,
+      worker:
+        record.worker ??
+        (typeof record.workerId === 'object' ? (record.workerId as GeoAttendanceRecord['worker']) : undefined)
+    }))
+  },
+
+  updateGeoAttendanceStatus: async (id: string, status: 'Present' | 'Absent'): Promise<GeoAttendanceRecord> =>
+    (await apiClient.patch<GeoAttendanceRecord>(`/attendance/${id}/status`, { status })).data
 }

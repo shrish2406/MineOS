@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { workflowService, type InspectionDetail, type WorkflowLookup } from '../services/workflow'
-import type { WorkflowInspection } from '../types'
+import type { EvidenceItem, WorkflowInspection } from '../types'
 import { useAuth } from '../context/AuthContext'
 import {
   InspectionsIcon,
@@ -26,6 +26,32 @@ import {
 } from '../components/icons'
 
 type ViewMode = 'table' | 'kanban'
+
+type EvidenceModalState = {
+  images: Array<{ src: string; fileName: string }>
+  activeIndex: number
+}
+
+function getEvidenceImageSrc(ev: EvidenceItem): string {
+  return ev.dataUri || ev.url || `http://localhost:5000/api/uploads/${ev.storageKey}`
+}
+
+function isEvidenceImage(ev: EvidenceItem): boolean {
+  return Boolean(ev.mimeType?.startsWith('image/') || ev.fileName?.match(/\.(png|jpe?g|webp|gif)$/i))
+}
+
+function openEvidenceModal(
+  evidence: EvidenceItem[] | undefined,
+  setEvidenceModal: (state: EvidenceModalState | null) => void
+): void {
+  const images = (evidence ?? [])
+    .filter(isEvidenceImage)
+    .map((ev) => ({ src: getEvidenceImageSrc(ev), fileName: ev.fileName }))
+
+  if (images.length > 0) {
+    setEvidenceModal({ images, activeIndex: 0 })
+  }
+}
 
 export function InspectionListPage() {
   const { user } = useAuth()
@@ -57,6 +83,7 @@ export function InspectionListPage() {
   const [filePreview, setFilePreview] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [evidenceModal, setEvidenceModal] = useState<EvidenceModalState | null>(null)
 
   const load = async () => {
     try {
@@ -575,10 +602,14 @@ export function InspectionListPage() {
                             </p>
                           )}
                           {item.photoCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-200 mt-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openEvidenceModal(item.evidence, setEvidenceModal)}
+                              className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-200 mt-1.5 hover:bg-blue-100 transition cursor-pointer"
+                            >
                               <CameraUploadIcon className="w-3 h-3 text-blue-600" />
                               {item.photoCount} Mongo Photo(s)
-                            </span>
+                            </button>
                           )}
                         </td>
 
@@ -989,6 +1020,73 @@ export function InspectionListPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {evidenceModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+          onClick={() => setEvidenceModal(null)}
+        >
+          <div
+            className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Inspection Photo Evidence</h3>
+                <p className="text-xs text-slate-500">
+                  {evidenceModal.images.length} image{evidenceModal.images.length !== 1 ? 's' : ''} stored in MongoDB Atlas
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEvidenceModal(null)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+              >
+                <CloseIcon className="w-4 h-4" />
+                Close
+              </button>
+            </div>
+
+            <div className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+              <img
+                src={evidenceModal.images[evidenceModal.activeIndex]?.src}
+                alt={evidenceModal.images[evidenceModal.activeIndex]?.fileName ?? 'Inspection evidence'}
+                className="max-h-[60vh] w-full object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  const storageKey = evidenceModal.images[evidenceModal.activeIndex]?.src.split('/').pop()
+                  if (storageKey) {
+                    target.src = `http://localhost:5000/uploads/${storageKey}`
+                  }
+                }}
+              />
+            </div>
+
+            <p className="mb-4 text-sm font-medium text-slate-700">
+              {evidenceModal.images[evidenceModal.activeIndex]?.fileName}
+            </p>
+
+            {evidenceModal.images.length > 1 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {evidenceModal.images.map((image, index) => (
+                  <button
+                    key={`${image.fileName}-${index}`}
+                    type="button"
+                    onClick={() => setEvidenceModal({ ...evidenceModal, activeIndex: index })}
+                    className={`overflow-hidden rounded-lg border transition ${
+                      evidenceModal.activeIndex === index
+                        ? 'border-minsos-500 ring-2 ring-minsos-200'
+                        : 'border-slate-200 hover:border-slate-400'
+                    }`}
+                  >
+                    <img src={image.src} alt={image.fileName} className="h-20 w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       )}
