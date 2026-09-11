@@ -27,6 +27,11 @@ export interface Mine {
   createdBy: string;
   createdAt?: string;
   updatedAt?: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+  attendanceRadius?: number;
 }
 
 export interface CreateMinePayload {
@@ -123,6 +128,52 @@ export interface InspectionFormData {
   submittedAt: string;
 }
 
+// === Feature 1: Assigned Action ===
+export type TaskStatus = 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
+
+export interface AssignedAction {
+  _id: string;
+  userId?: string;
+  mineId?: {
+    _id: string;
+    name: string;
+    code: string;
+    location: string;
+  } | string;
+  complianceId?: {
+    _id: string;
+    requirement: string;
+    category: string;
+    dueDate: string;
+    expiry: string;
+    status: string;
+  } | string;
+  title: string;
+  category: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate?: string;
+  notes?: string;
+  assignedAt?: string;
+  done: boolean;
+  completedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// === Feature 2: Offline sync state ===
+export type SyncStatus = 'synced' | 'offline' | 'pending' | 'syncing' | 'failed';
+
+export interface SyncQueueItem {
+  id: string;
+  taskId: string;
+  action: 'updateStatus';
+  payload: { status: TaskStatus; notes?: string };
+  createdAt: string;
+  retryCount: number;
+}
+
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
@@ -131,7 +182,8 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  HazardTab: undefined;
+  Reels: undefined;
+  Messages: undefined;
   Profile: undefined;
 };
 
@@ -148,6 +200,11 @@ export type InspectionStackParamList = {
 
 export type HazardStackParamList = {
   HazardReport: undefined;
+};
+
+export type MessagesStackParamList = {
+  AssignedActions: undefined;
+  TaskDetail: { task: AssignedAction };
 };
 
 export type ProfileStackParamList = {

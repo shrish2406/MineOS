@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from "../middleware/auth";
 import { Compliance, COMPLIANCE_STATUSES } from "../models/Compliance";
 import { Mine } from "../models/Mine";
 import { User } from "../models/User";
+import { WorkerTask } from "../models/WorkerTask";
 import { normaliseEvidence } from "../models/workflowTypes";
 import { resolveAlertByEntity } from "../services/alertService";
 import { recordAudit } from "../services/auditService";
@@ -54,6 +55,34 @@ export async function createCompliance(
       evidence: normaliseEvidence(body.evidence, request.user!.id),
       notes: typeof body.notes === "string" ? body.notes.trim() : undefined,
       createdBy: request.user!.id
+    });
+
+    // Auto-create an assigned action (WorkerTask) for the responsible officer
+    const priorityMap: Record<string, string> = {
+      "DGMS Statutory": "High",
+      "Safety SOP": "High",
+      "Electrical Safety": "High",
+      "Explosives & Blasting": "Critical",
+      "Environmental Clearance": "Medium",
+      "Ventilation Standard": "Medium",
+      "Labour & Welfare": "Medium"
+    };
+    const category = typeof body.category === "string" ? body.category.trim() : "DGMS Statutory";
+
+    await WorkerTask.create({
+      userId: body.responsiblePersonId,
+      mineId: body.mineId,
+      complianceId: compliance._id,
+      title: body.requirement.trim(),
+      category,
+      status: "Pending",
+      priority: priorityMap[category] || "Medium",
+      dueDate,
+      notes: typeof body.notes === "string" ? body.notes.trim() : undefined,
+      assignedAt: new Date(),
+      done: false,
+      time: "Pending",
+      date: new Date().toISOString().slice(0, 10)
     });
 
     await recordAudit(request, "compliance" as never, compliance.id, "created", undefined, compliance.toObject());

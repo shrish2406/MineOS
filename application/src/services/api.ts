@@ -1,31 +1,21 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './storage';
 
-/** Host machine LAN IPv4 — update when your network changes (run `ipconfig`). */
-const LOCAL_DEV_HOST = '10.106.149.199';
-const BACKEND_PORT = 5000;
-
-/**
- * Resolves the API base URL for the current platform.
- * - Override any time with EXPO_PUBLIC_API_URL (e.g. http://192.168.1.10:5000/api)
- * - Android emulator: 10.0.2.2 reaches the host machine from the emulator
- * - iOS simulator: localhost reaches the host machine directly
- * - Physical device: LAN IP so the phone can reach your computer on the same Wi-Fi
- */
+/** Gets the backend URL configured by Expo at bundle time. */
 function resolveApiBaseUrl(): string {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, '');
+  const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+
+  if (!configuredUrl) {
+    if (__DEV__) {
+      console.warn(
+        '[api] EXPO_PUBLIC_API_URL is not configured. Add it to application/.env and restart Expo.',
+      );
+    }
+    return '';
   }
 
-  const host = Platform.select({
-    android: LOCAL_DEV_HOST,
-    ios: LOCAL_DEV_HOST,
-    default: LOCAL_DEV_HOST,
-  });
-
-  return `http://${host}:${BACKEND_PORT}/api`;
+  return configuredUrl.replace(/\/$/, '');
 }
 
 export function formatApiError(error: unknown): Record<string, unknown> {
@@ -36,7 +26,9 @@ export function formatApiError(error: unknown): Record<string, unknown> {
   }
 
   const axiosError = error as AxiosError;
-  const isNetworkError = !axiosError.response && Boolean(axiosError.request);
+  const isNetworkError =
+    axiosError.code === 'ERR_NETWORK' ||
+    (!axiosError.response && Boolean(axiosError.request));
   const url = axiosError.config?.baseURL
     ? `${axiosError.config.baseURL}${axiosError.config.url ?? ''}`
     : axiosError.config?.url;
@@ -57,7 +49,17 @@ export function formatApiError(error: unknown): Record<string, unknown> {
 }
 
 export function logApiError(context: string, error: unknown): void {
-  console.error(`[api] ${context}:`, formatApiError(error));
+  const details = formatApiError(error);
+
+  if (details.isNetworkError === true) {
+    console.error(
+      `[api] ${context}: Backend unavailable. Cannot connect to ${API_BASE_URL || 'EXPO_PUBLIC_API_URL'}. ` +
+        'Start the backend and, on a physical device, ensure the phone and computer use the same Wi-Fi network.',
+    );
+    return;
+  }
+
+  console.error(`[api] ${context}:`, details);
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();

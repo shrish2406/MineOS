@@ -4,6 +4,7 @@ import { memoryUploadMiddleware } from "../middleware/uploadMiddleware";
 import {
   checkInAttendance,
   listPendingAttendance,
+  listAllAttendance,
   updateAttendanceStatus,
   uploadAttendanceImage
 } from "../controllers/attendanceController";
@@ -25,10 +26,17 @@ router.post(
   uploadAttendanceImage
 );
 
+// Manager/Admin views — pending (for manual review) and all records
 router.get(
   "/pending",
   authorize("safety_officer", "mine_manager", "admin"),
   listPendingAttendance
+);
+
+router.get(
+  "/all",
+  authorize("safety_officer", "mine_manager", "admin"),
+  listAllAttendance
 );
 
 router.patch(

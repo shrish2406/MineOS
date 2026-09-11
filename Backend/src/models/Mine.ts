@@ -10,6 +10,7 @@ export interface IMine extends Document {
     latitude: number;
     longitude: number;
   };
+  attendanceRadius: number;
   createdBy: Schema.Types.ObjectId;
 }
 
@@ -24,9 +25,10 @@ const mineSchema = new Schema<IMine>(
       latitude: { type: Number },
       longitude: { type: Number }
     },
+    attendanceRadius: { type: Number, default: 100, min: 10, max: 50000 },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true }
   },
   { timestamps: true }
 );
 
-export const Mine = model<IMine>("Mine", mineSchema);
+export const Mine = model<IMine>("Mine", mineSchema);

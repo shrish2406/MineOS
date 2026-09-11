@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -14,6 +14,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { logout } from '../services/authService';
 import { getUser } from '../services/storage';
+import { getPendingCount } from '../services/offlineTaskService';
+import { getConnectionStatus, subscribeToNetwork } from '../services/networkService';
 import colors from '../theme/colors';
 import type { ProfileStackParamList, RootStackParamList, User } from '../types';
 
@@ -27,6 +29,7 @@ type SettingItem = {
   accentColor: string;
   hasSwitch?: boolean;
   route?: keyof ProfileStackParamList;
+  tab?: 'Messages';
 };
 
 const SETTINGS_ITEMS: SettingItem[] = [
@@ -44,6 +47,7 @@ const SETTINGS_ITEMS: SettingItem[] = [
     subtitle: 'View and update your tasks',
     icon: 'clipboard-outline',
     accentColor: colors.gold,
+    tab: 'Messages',
   },
   {
     id: 'offline-sync',
@@ -72,14 +76,37 @@ const SETTINGS_ITEMS: SettingItem[] = [
 export default function ProfileScreen({ navigation }: Props) {
   const [offlineSyncEnabled, setOfflineSyncEnabled] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isOnline, setIsOnline] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       getUser().then(setUser);
+      getPendingCount().then(setPendingCount);
+      getConnectionStatus().then((s) => setIsOnline(s === 'online'));
     }, []),
   );
 
-  const visibleSettings = useMemo(() => SETTINGS_ITEMS, []);
+  useEffect(() => {
+    const unsub = subscribeToNetwork((status) => setIsOnline(status === 'online'));
+    return unsub;
+  }, []);
+
+  const visibleSettings = useMemo(() => SETTINGS_ITEMS.map((item) => {
+    if (item.id === 'assigned-actions' && pendingCount > 0) {
+      return {
+        ...item,
+        subtitle: `${pendingCount} change${pendingCount !== 1 ? 's' : ''} pending sync`,
+      };
+    }
+    if (item.id === 'offline-sync') {
+      return {
+        ...item,
+        subtitle: isOnline ? 'Connected — auto-sync enabled' : 'Offline — data saved locally',
+      };
+    }
+    return item;
+  }), [pendingCount, isOnline]);
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -122,7 +149,12 @@ export default function ProfileScreen({ navigation }: Props) {
               style={({ pressed }) => [styles.settingCard, pressed && styles.settingCardPressed]}
               onPress={() => {
                 if (item.route) {
-                  navigation.navigate(item.route);
+                  // Cast required: item.route is keyof ProfileStackParamList (string union),
+                  // but navigate() expects a literal overload. The actual value is always
+                  // one of the valid screen names at runtime.
+                  navigation.navigate(item.route as 'AttendanceCheckIn');
+                } else if (item.tab) {
+                  navigation.getParent()?.navigate(item.tab);
                 }
               }}
             >

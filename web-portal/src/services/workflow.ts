@@ -491,6 +491,16 @@ export const workflowService = {
     }))
   },
 
+  allGeoAttendance: async (params?: Record<string, string | number | undefined>): Promise<GeoAttendanceRecord[]> => {
+    const response = await apiClient.get<{ data: GeoAttendanceRecord[] }>('/attendance/all', { params })
+    return response.data.data.map((record) => ({
+      ...record,
+      worker:
+        record.worker ??
+        (typeof record.workerId === 'object' ? (record.workerId as GeoAttendanceRecord['worker']) : undefined)
+    }))
+  },
+
   updateGeoAttendanceStatus: async (id: string, status: 'Present' | 'Absent'): Promise<GeoAttendanceRecord> =>
     (await apiClient.patch<GeoAttendanceRecord>(`/attendance/${id}/status`, { status })).data
 }

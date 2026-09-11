@@ -7,20 +7,32 @@ export interface AttendanceCheckInPayload {
   latitude: number;
   longitude: number;
   timestamp: string;
+  /** GPS horizontal accuracy from the device, in metres. */
+  accuracyMeters?: number;
+  /** Mine/colliery the worker belongs to. */
+  mineId?: string;
+}
+
+export interface AttendanceCheckInResult {
+  _id: string;
+  status: string;
+  verificationStatus?: string;
+  distanceFromMine?: number;
+  message?: string;
 }
 
 async function uploadAttendanceImage(image: GeoTaggedImage): Promise<string> {
   if (!image.uri) {
     throw new Error('Missing image URI for upload');
   }
-
-  // Upload directly from the worker device. The app's EXPO_PUBLIC_ Cloudinary
-  // settings are intentionally used here, so attendance does not depend on
-  // separate server-side Cloudinary credentials.
+  // Upload directly from the worker device using EXPO_PUBLIC_ Cloudinary settings.
   return uploadImageToCloudinary(image.uri, 'attendance.jpg');
 }
 
-export async function submitAttendanceCheckIn(image: GeoTaggedImage): Promise<void> {
+export async function submitAttendanceCheckIn(
+  image: GeoTaggedImage,
+  mineId?: string,
+): Promise<AttendanceCheckInResult> {
   try {
     const imageUrl = await uploadAttendanceImage(image);
 
@@ -29,9 +41,12 @@ export async function submitAttendanceCheckIn(image: GeoTaggedImage): Promise<vo
       latitude: image.latitude,
       longitude: image.longitude,
       timestamp: image.timestamp,
+      ...(image.accuracyMeters !== undefined ? { accuracyMeters: image.accuracyMeters } : {}),
+      ...(mineId ? { mineId } : {}),
     };
 
-    await api.post('/attendance/check-in', payload);
+    const response = await api.post<AttendanceCheckInResult>('/attendance/check-in', payload);
+    return response.data;
   } catch (err) {
     logApiError('submitAttendanceCheckIn', err);
     throw err;

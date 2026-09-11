@@ -39,6 +39,7 @@ export function MinesPage() {
   const [operator, setOperator] = useState('Coal India Limited')
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
+  const [attendanceRadius, setAttendanceRadius] = useState('100')
   const [submitting, setSubmitting] = useState(false)
 
   // Edit Coordinates Modal
@@ -156,20 +157,23 @@ export function MinesPage() {
     try {
       setSubmitting(true)
       setError('')
+      const radiusNum = parseInt(attendanceRadius, 10)
       await workflowService.createMine({
         name: name.trim(),
         code: code.trim().toUpperCase(),
         location: location.trim(),
         operator: operator.trim(),
-        coordinates: coords
+        coordinates: coords,
+        ...(radiusNum > 0 ? { attendanceRadius: radiusNum } : {})
       })
-      setSuccess(`Mine site ${name} registered successfully. Coordinates saved for GIS mapping.`)
+      setSuccess(`Mine site ${name} registered successfully.`)
       setShowAddModal(false)
       setName('')
       setCode('')
       setLocation('')
       setLatitude('')
       setLongitude('')
+      setAttendanceRadius('100')
       setGpsStatus(null)
       loadMines()
     } catch {
@@ -551,6 +555,22 @@ export function MinesPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+
+              {/* Attendance Geofence Radius */}
+              <div>
+                <label className="block font-medium text-slate-700 text-xs">Attendance Radius (metres)</label>
+                <p className="text-xs text-slate-500 mb-1">Workers must check in within this distance from the mine centroid. Default: 100m.</p>
+                <input
+                  type="number"
+                  min="10"
+                  max="5000"
+                  step="10"
+                  placeholder="100"
+                  value={attendanceRadius}
+                  onChange={(e) => setAttendanceRadius(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 text-sm focus:ring-2 focus:ring-minsos-500"
+                />
               </div>
 
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-3">

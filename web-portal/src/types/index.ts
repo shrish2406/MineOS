@@ -349,6 +349,7 @@ export interface MineRecord {
     latitude: number
     longitude: number
   }
+  attendanceRadius?: number
   createdAt: string
   compliance?: number
   riskScore?: number
@@ -655,11 +656,14 @@ export interface GeoAttendanceRecord {
     latitude: number
     longitude: number
   }
-  status: 'Pending' | 'Present' | 'Absent' | string
+  distanceFromMine?: number
+  gpsAccuracy?: number
+  verificationMethod?: 'GPS_PHOTO' | 'MANUAL'
+  status: 'Pending' | 'Present' | 'Absent' | 'AUTO_VERIFIED' | 'MANUAL_REVIEW' | 'REJECTED' | string
   timestamp?: string
-  worker?: GeoAttendanceWorker
   createdAt?: string
   updatedAt?: string
+  worker?: GeoAttendanceWorker
 }
 
 

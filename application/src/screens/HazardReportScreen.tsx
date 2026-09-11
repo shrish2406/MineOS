@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -13,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import CameraCapture from '../components/CameraCapture';
@@ -38,6 +40,26 @@ export default function HazardReportScreen({ navigation }: Props) {
   const [gps, setGps] = useState<GpsCoordinates | null>(null);
   const [gpsLoading, setGpsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  const goToTab = useCallback(
+    (tab: 'Home' | 'Profile') => {
+      navigation.getParent()?.navigate(tab);
+    },
+    [navigation],
+  );
+
+  // A hazard report is a top-level tab, so Android Back should return to Home
+  // instead of closing the app.
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        goToTab('Home');
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, [goToTab]),
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -125,7 +147,7 @@ export default function HazardReportScreen({ navigation }: Props) {
       Alert.alert(
         'Hazard Report Submitted',
         'Your geo-tagged incident is now in the shared portal case register for officer review and closure.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
+        [{ text: 'OK', onPress: () => goToTab('Home') }],
       );
     } catch (err) {
       const message = axios.isAxiosError(err)

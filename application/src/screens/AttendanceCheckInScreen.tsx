@@ -13,15 +13,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CameraCapture from '../components/CameraCapture';
 import CustomButton from '../components/CustomButton';
-import { submitAttendanceCheckIn } from '../services/attendanceService';
+import { submitAttendanceCheckIn, type AttendanceCheckInResult } from '../services/attendanceService';
 import colors from '../theme/colors';
 import type { GeoTaggedImage, ProfileStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'AttendanceCheckIn'>;
 
+const VERIFICATION_CONFIG: Record<string, { icon: 'checkmark-circle' | 'time' | 'close-circle'; color: string; label: string }> = {
+  AUTO_VERIFIED: { icon: 'checkmark-circle', color: colors.success, label: 'Auto-Verified ✓' },
+  MANUAL_REVIEW: { icon: 'time', color: '#F59E0B', label: 'Pending Review' },
+  REJECTED: { icon: 'close-circle', color: colors.error, label: 'Rejected' },
+};
+
 export default function AttendanceCheckInScreen({ navigation }: Props) {
   const [geoTaggedImage, setGeoTaggedImage] = useState<GeoTaggedImage | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<AttendanceCheckInResult | null>(null);
 
   const handleSubmit = async () => {
     if (!geoTaggedImage) {
@@ -30,15 +37,30 @@ export default function AttendanceCheckInScreen({ navigation }: Props) {
     }
 
     setSubmitting(true);
+    setResult(null);
 
     try {
-      await submitAttendanceCheckIn(geoTaggedImage);
+      const res = await submitAttendanceCheckIn(geoTaggedImage);
+      setResult(res);
 
-      Alert.alert(
-        'Check-In Submitted',
-        'Your geo-tagged attendance photo has been sent for Safety Officer review.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
-      );
+      const verStatus = res.verificationStatus ?? res.status ?? 'MANUAL_REVIEW';
+      const serverMessage = res.message ?? 'Your attendance has been submitted.';
+
+      if (verStatus === 'REJECTED') {
+        Alert.alert('Check-In Rejected', serverMessage, [{ text: 'OK' }]);
+      } else if (verStatus === 'AUTO_VERIFIED') {
+        Alert.alert(
+          'Check-In Verified ✓',
+          serverMessage,
+          [{ text: 'OK', onPress: () => navigation.goBack() }],
+        );
+      } else {
+        Alert.alert(
+          'Check-In Submitted',
+          serverMessage,
+          [{ text: 'OK', onPress: () => navigation.goBack() }],
+        );
+      }
     } catch (err) {
       const message = axios.isAxiosError(err)
         ? (err.response?.data?.message as string) ?? 'Failed to submit attendance check-in.'
@@ -51,6 +73,9 @@ export default function AttendanceCheckInScreen({ navigation }: Props) {
     }
   };
 
+  const verStatus = result?.verificationStatus ?? result?.status;
+  const verConfig = verStatus ? VERIFICATION_CONFIG[verStatus] : null;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -61,7 +86,7 @@ export default function AttendanceCheckInScreen({ navigation }: Props) {
           <Ionicons name="camera" size={32} color={colors.gold} />
           <Text style={styles.headerTitle}>Attendance Check-In</Text>
           <Text style={styles.headerSubtext}>
-            Capture a live photo with GPS coordinates. Your Safety Officer will review and mark you present.
+            Capture a live photo. Your GPS coordinates will be verified against the mine geofence automatically.
           </Text>
         </View>
 
@@ -82,12 +107,36 @@ export default function AttendanceCheckInScreen({ navigation }: Props) {
               <Text style={styles.gpsText}>
                 Lat: {geoTaggedImage.latitude.toFixed(6)} · Lng: {geoTaggedImage.longitude.toFixed(6)}
               </Text>
+              {geoTaggedImage.accuracyMeters !== undefined && (
+                <Text style={styles.gpsAccuracy}>
+                  GPS Accuracy: ±{Math.round(geoTaggedImage.accuracyMeters)}m
+                  {geoTaggedImage.accuracyMeters > 200 ? ' — Low accuracy, may require review' : ''}
+                </Text>
+              )}
               <Text style={styles.gpsTimestamp}>
                 {new Date(geoTaggedImage.timestamp).toLocaleString()}
               </Text>
             </View>
           ) : null}
         </View>
+
+        {/* Verification result card */}
+        {result && verConfig && (
+          <View style={[styles.resultCard, { borderColor: verConfig.color }]}>
+            <Ionicons name={verConfig.icon} size={28} color={verConfig.color} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.resultStatus, { color: verConfig.color }]}>{verConfig.label}</Text>
+              {result.distanceFromMine !== undefined && (
+                <Text style={styles.resultDetail}>
+                  Distance from mine: {result.distanceFromMine}m
+                </Text>
+              )}
+              {result.message ? (
+                <Text style={styles.resultMessage}>{result.message}</Text>
+              ) : null}
+            </View>
+          </View>
+        )}
 
         <CustomButton
           title="Submit Attendance Check-In"
@@ -107,13 +156,13 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
+    gap: 16,
   },
   headerCard: {
     backgroundColor: colors.navy,
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
-    marginBottom: 16,
   },
   headerTitle: {
     fontSize: 20,
@@ -133,9 +182,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: 12,
   },
   gpsCard: {
     backgroundColor: colors.background,
@@ -143,12 +192,13 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: 4,
   },
   gpsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   gpsTitle: {
     fontSize: 14,
@@ -158,10 +208,38 @@ const styles = StyleSheet.create({
   gpsText: {
     fontSize: 13,
     color: colors.text,
-    marginBottom: 4,
+  },
+  gpsAccuracy: {
+    fontSize: 12,
+    color: '#D97706',
+    fontStyle: 'italic',
   },
   gpsTimestamp: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  resultCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  resultStatus: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  resultDetail: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  resultMessage: {
+    fontSize: 13,
+    color: colors.text,
+    lineHeight: 18,
   },
 });
