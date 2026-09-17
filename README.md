@@ -1,114 +1,95 @@
+<div align="center">
 
-# MineOS
+# ⛏️ MineOS
 
-MineOS is a Coal Mine Governance, Safety and Compliance Platform built for the Smart India Hackathon problem statement SIH26024.
+### Mining Intelligence & Smart Operations System
 
-It helps mine managers, safety teams, corporate teams and regulators track mine compliance, inspections, violations, corrective actions, evidence and audit accountability from one system.
+**Safety • Compliance • GIS • Workforce Management**
 
-## Current Progress
+![React](https://img.shields.io/badge/React-TypeScript-61DAFB?style=flat-square&logo=react)
+![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js)
+![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=flat-square&logo=mongodb)
+![Expo](https://img.shields.io/badge/Expo-React_Native-000020?style=flat-square&logo=expo)
 
-### Day 1 Completed
+</div>
 
-- Professional MINSOS web portal UI
-- Login and registration interface
-- Role-based frontend navigation
-- Shared dashboard layout
-- Mine risk ranking and alerts
-- Demo dashboard data
-- Backend authentication foundation
-- MongoDB and JWT configuration foundation
-- Mine CRUD API foundation
+---
 
-### Day 2 Completed
+## 🚀 About
 
-- Mine Dashboard with:
-  - Total mines
-  - Compliance percentage
-  - Open violations
-  - Critical violations
-  - Overdue actions
-  - Risk score
-- Inspection Register
-- Inspection Details page
-- GPS metadata display
-- Photo and evidence metadata display
-- Inspection observations
-- Violation Register
-- Corrective Action Tracker
-- Action status workflow demonstration
-- Manager verification workflow demonstration
-- Backend implementation contract in `Backend/backend.md`
-- Typed frontend API service foundation for future integration
+**MineOS** is a centralized mining governance platform designed to improve **mine safety, statutory compliance, inspections, workforce monitoring, and operational management**.
 
-## Core Workflow
+It connects field-level activities with GIS, dashboards, alerts, and centralized data management.
+
+---
+
+## ✨ Features
+
+- 🛡️ **Incident & Safety Management** — Report and track mine incidents.
+- 🔍 **Digital Inspections** — Geo-tagged inspections with checklists and evidence.
+- ⚠️ **Violation Management** — Track and manage safety and compliance violations.
+- 🔧 **Corrective Actions** — Assign, monitor and verify corrective actions.
+- 🗺️ **GIS Mapping** — Visualize mines, incidents, inspections and workforce locations.
+- 👷 **Workforce Attendance** — GPS-based attendance and emergency roll-call.
+- 🔔 **Alerts & Escalation** — Notifications for critical events and overdue actions.
+- 📊 **Compliance Dashboard** — Monitor mine-wise compliance and operational status.
+- 🔐 **Role-Based Access** — Secure access based on user responsibilities.
+
+---
+
+## 🏗️ Architecture
 
 ```text
-Inspection
-   ↓
-Violation
-   ↓
-Corrective Action
-   ↓
-Resolution
-   ↓
-Verification
+Mobile App ──────┐
+                 │
+Web Dashboard ───┼──► Node.js / Express ───► MongoDB
+                 │             │
+                 └─────────────┴──► GIS
 ```
 
-## Project Structure
+---
 
-```text
-MineOS/
-├── Backend/                  # Node.js, Express, MongoDB backend
-│   ├── src/
-│   ├── backend.md            # Day 2 backend API and model contract
-│   ├── package.json
-│   └── .env.example
-│
-├── web-portal/               # React + TypeScript frontend
-│   ├── src/
-│   ├── package.json
-│   ├── mind.md               # Frontend project documentation
-│   └── .env.example
-│
-├── ai-ml/                    # Future AI/ML module
-├── application/              # Future application module
-└── README.md
-```
+## 🛠️ Tech Stack
 
-## Technology Stack
+| Layer | Technologies |
+|---|---|
+| Web | React, TypeScript, Vite, Tailwind CSS |
+| Mobile | React Native, Expo |
+| Backend | Node.js, Express, TypeScript |
+| Database | MongoDB, Mongoose |
+| GIS | OpenStreetMap, Leaflet |
+| Authentication | JWT, bcrypt |
 
-### Frontend
+---
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- React Router
-- Axios
+# ⚙️ Installation Guide
 
-### Backend
+## Prerequisites
 
-- Node.js
-- Express.js
-- TypeScript
-- MongoDB Atlas
-- Mongoose
-- JWT Authentication
-- bcrypt password hashing
+Make sure you have installed:
 
-## Run the Project
+- [Node.js](https://nodejs.org/) 18+
+- [MongoDB](https://www.mongodb.com/)
+- [Git](https://git-scm.com/)
+- [Expo](https://expo.dev/) for mobile development
 
-### 1. Clone Repository
+---
+
+## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/shrish2406/MineOS.git
+git clone https://github.com/YOUR_USERNAME/MineOS.git
+
 cd MineOS
 ```
 
-### 2. Start Backend
+---
+
+## 2. Backend Setup
 
 ```bash
 cd Backend
+
 npm install
 ```
 
@@ -116,90 +97,111 @@ Create a `.env` file inside the `Backend` folder:
 
 ```env
 PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_secure_jwt_secret
-JWT_EXPIRES_IN=1d
-CORS_ORIGIN=http://127.0.0.1:5173
-MONGODB_DNS_SERVERS=1.1.1.1,8.8.8.8
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
 ```
 
-Run backend:
+Start the backend:
 
-```powershell
-$env:NODE_OPTIONS="--use-system-ca"
+```bash
 npm run dev
 ```
 
-Backend health URL:
+The backend will run on:
 
 ```text
-http://127.0.0.1:5000/api/health
+http://localhost:5000
 ```
 
-### 3. Start Frontend
+---
+
+## 3. Web Application Setup
+
+Open a new terminal:
+
+```bash
+cd application/web
+
+npm install
+
+npm run dev
+```
+
+Open the URL shown by Vite in your browser.
+
+---
+
+## 4. Mobile Application Setup
 
 Open another terminal:
 
 ```bash
-cd web-portal
+cd application/mobile
+
 npm install
-npm run dev
+
+npx expo start
 ```
 
-Open the frontend:
+Scan the QR code using **Expo Go** or run the application on an Android/iOS emulator.
+
+---
+
+## 📁 Project Structure
 
 ```text
-http://127.0.0.1:5173
+MineOS/
+├── Backend/
+├── application/
+│   ├── web/
+│   └── mobile/
+├── docs/
+└── README.md
 ```
 
-## Backend Development
+---
 
-Backend developers should read:
+## 🔄 Core Workflow
 
 ```text
-Backend/backend.md
+Field Activity
+      ↓
+Incident / Inspection
+      ↓
+GPS + Evidence
+      ↓
+Violation
+      ↓
+Corrective Action
+      ↓
+Verification
+      ↓
+Compliance
+      ↓
+Alerts + Dashboard
 ```
 
-It defines:
+---
 
-- Inspection model
-- Violation model
-- Corrective Action model
-- Incident model
-- Evidence metadata
-- Audit logging
-- Role permissions
-- Status transitions
-- Required API endpoints
-- Dashboard summary API
-- Frontend integration checklist
+## 👥 Roles
 
-## Important Security Notes
+**Worker • Inspector • Safety Officer • Mine Manager • Corporate Officer • Regulator • Contractor • Admin**
 
-- Never upload `.env` files to GitHub.
-- Never upload MongoDB connection strings, JWT secrets or passwords.
-- Do not upload `node_modules` or `dist` folders.
-- MongoDB Atlas must allow the developer machine IP address in Network Access before the backend can connect.
+---
 
-## Current Limitation
+## 🎯 Vision
 
-The Day 2 frontend workflow currently uses structured demo data while backend workflow APIs are being implemented.
+> **From fragmented mine data to unified mining operations.**
 
-Once the APIs in `Backend/backend.md` are completed, the frontend will connect through:
+MineOS aims to enable **safer, smarter and more accountable mining operations** through digital governance.
 
-```text
-web-portal/src/services/workflow.ts
-```
+---
 
-## Team Workflow
 
-1. Create a new Git branch for each feature.
-2. Do not push directly to `main`.
-3. Create a Pull Request for review.
-4. Keep frontend and backend API contracts aligned.
-5. Test backend health, authentication and workflow APIs before merging.
+<div align="center">
 
-## Vision
+### ⛏️ MineOS
 
-MineOS aims to become a future-ready governance platform for coal mines by supporting compliance management, safety inspections, evidence tracking, corrective actions, incident reporting, audit trails, risk monitoring and intelligent decision support.
-```
+**Safety • Compliance • GIS • Workforce**
+
+</div>
